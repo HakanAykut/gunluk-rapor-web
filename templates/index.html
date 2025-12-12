@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Günlük Faaliyet Raporu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Günlük Faaliyet Raporu</h1>
+
+<form method="POST" action="/generator-test" enctype="multipart/form-data">
+
+    <label><strong>Rapor Metni</strong></label><br>
+    <textarea name="report_text" placeholder="Buraya rapor metnini yapıştır..."></textarea>
+
+    <br>
+
+    <label><strong>Fotoğraflar (en fazla 8 adet)</strong></label><br>
+    <input type="file" name="photos" multiple accept="image/*">
+
+    <br>
+
+    <button type="submit">PDF Oluştur</button>
+
+</form>
+
+</body>
+</html>
