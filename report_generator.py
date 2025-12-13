@@ -223,37 +223,40 @@ def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
     try:
         # xlsx2pdf 1.0.4 için doğru kullanım
         import xlsx2pdf
+        print(f"xlsx2pdf modülü yüklendi: {xlsx2pdf}")
+        print(f"xlsx2pdf içeriği: {dir(xlsx2pdf)}")
         
-        # xlsx2pdf 1.0.4'te convert fonksiyonu doğrudan modülden çağrılır
-        # veya xlsx2pdf.converter.convert kullanılır
-        try:
-            # Önce direkt import dene
-            from xlsx2pdf import convert
-            convert(excel_file, pdf_file)
-        except (ImportError, AttributeError):
-            # Alternatif: converter modülünden
+        # xlsx2pdf 1.0.4'ün yapısını kontrol et
+        if hasattr(xlsx2pdf, 'convert'):
+            print("xlsx2pdf.convert bulundu")
+            xlsx2pdf.convert(excel_file, pdf_file)
+        elif hasattr(xlsx2pdf, 'xlsx2pdf'):
+            print("xlsx2pdf.xlsx2pdf bulundu")
+            xlsx2pdf.xlsx2pdf(excel_file, pdf_file)
+        else:
+            # xlsx2pdf 1.0.4'te muhtemelen direkt convert fonksiyonu var
             try:
-                from xlsx2pdf.converter import convert
-                convert(excel_file, pdf_file)
-            except (ImportError, AttributeError):
-                # Son çare: xlsx2pdf modülünün convert metodunu kullan
-                if hasattr(xlsx2pdf, 'convert'):
-                    xlsx2pdf.convert(excel_file, pdf_file)
+                # Modülün __all__ veya __dict__'ini kontrol et
+                if 'convert' in dir(xlsx2pdf):
+                    convert_func = getattr(xlsx2pdf, 'convert')
+                    convert_func(excel_file, pdf_file)
                 else:
-                    # xlsx2pdf 1.0.4 için yeni API - Converter sınıfı
-                    try:
-                        from xlsx2pdf.converter import Converter
-                        # Converter sınıfı farklı parametreler alabilir
-                        converter = Converter(excel_file, output_file=pdf_file)
-                        converter.convert()
-                    except TypeError:
-                        # Farklı parametre yapısı
-                        from xlsx2pdf.converter import Converter
-                        converter = Converter(excel_file)
-                        converter.convert(pdf_file)
-                    except Exception as conv_e:
-                        print(f"Converter hatası: {conv_e}")
-                        raise
+                    # xlsx2pdf 1.0.4 için subprocess kullan
+                    import subprocess
+                    import sys
+                    result = subprocess.run(
+                        [sys.executable, '-m', 'xlsx2pdf', excel_file, pdf_file],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        cwd=os.path.dirname(excel_file)
+                    )
+                    if result.returncode != 0:
+                        print(f"xlsx2pdf subprocess hatası: {result.stderr}")
+                        raise Exception(f"xlsx2pdf subprocess failed: {result.stderr}")
+            except Exception as sub_e:
+                print(f"Subprocess hatası: {sub_e}")
+                raise
         
         # PDF dosyasının oluştuğunu ve boş olmadığını kontrol et
         if os.path.exists(pdf_file):
