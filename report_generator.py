@@ -218,13 +218,45 @@ def setup_print_area(ws):
 def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
     """
     Excel dosyasını PDF'e çevirir.
-    xlsx2pdf 1.0.4 kullanır.
+    xlsx2pdf 1.0.4 kullanır - Transformer sınıfı ile.
     """
     try:
-        # xlsx2pdf 1.0.4 paket yapısını keşfet
-        import xlsx2pdf
-        import pkgutil
-        import importlib
+        # xlsx2pdf 1.0.4'te Transformer sınıfı kullanılır
+        from xlsx2pdf.transformator import Transformer
+        from openpyxl import load_workbook
+        
+        print(f"Transformer ile PDF oluşturuluyor: {excel_file} -> {pdf_file}")
+        
+        # Transformer workbook objesi alıyor
+        wb = load_workbook(excel_file)
+        transformer = Transformer(wb)
+        
+        # PDF'e dönüştür
+        transformer.convert(pdf_file)
+        
+        if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
+            print(f"PDF başarıyla oluşturuldu: {pdf_file}")
+            return True
+        else:
+            print("PDF dosyası oluşturulamadı veya boş")
+            return False
+            
+    except ImportError as e:
+        print(f"xlsx2pdf ImportError: {e}")
+        # Eski yöntemi dene (xlsx2pdf 0.x için)
+        try:
+            from xlsx2pdf import convert
+            convert(excel_file, pdf_file)
+            if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
+                return True
+        except:
+            pass
+        return False
+    except Exception as e:
+        print(f"xlsx2pdf Exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
         
         print(f"xlsx2pdf modülü yüklendi: {xlsx2pdf}")
         print(f"xlsx2pdf __path__: {getattr(xlsx2pdf, '__path__', 'N/A')}")
