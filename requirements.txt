@@ -3,3 +3,4 @@ gunicorn==23.0.0
 Pillow==11.3.0
 openpyxl==3.1.5
 xlsx2pdf==1.0.4
+reportlab==3.9.0

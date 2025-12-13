@@ -218,28 +218,59 @@ def setup_print_area(ws):
 def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
     """
     Excel dosyasını PDF'e çevirir.
-    xlsx2pdf kütüphanesi kullanır (sayfa ayarlarını daha iyi okur).
+    xlsx2pdf 1.0.4 kullanır.
     """
     try:
-        # xlsx2pdf 1.0.4 için farklı import denemeleri
+        # xlsx2pdf 1.0.4 için doğru kullanım
+        import xlsx2pdf
+        
+        # xlsx2pdf 1.0.4'te convert fonksiyonu doğrudan modülden çağrılır
+        # veya xlsx2pdf.converter.convert kullanılır
         try:
+            # Önce direkt import dene
             from xlsx2pdf import convert
             convert(excel_file, pdf_file)
         except (ImportError, AttributeError):
-            # Alternatif import yöntemi
+            # Alternatif: converter modülünden
             try:
-                import xlsx2pdf
-                xlsx2pdf.convert(excel_file, pdf_file)
-            except (AttributeError, TypeError):
-                # xlsx2pdf 1.0.4 için yeni API
                 from xlsx2pdf.converter import convert
                 convert(excel_file, pdf_file)
+            except (ImportError, AttributeError):
+                # Son çare: xlsx2pdf modülünün convert metodunu kullan
+                if hasattr(xlsx2pdf, 'convert'):
+                    xlsx2pdf.convert(excel_file, pdf_file)
+                else:
+                    # xlsx2pdf 1.0.4 için yeni API - Converter sınıfı
+                    try:
+                        from xlsx2pdf.converter import Converter
+                        # Converter sınıfı farklı parametreler alabilir
+                        converter = Converter(excel_file, output_file=pdf_file)
+                        converter.convert()
+                    except TypeError:
+                        # Farklı parametre yapısı
+                        from xlsx2pdf.converter import Converter
+                        converter = Converter(excel_file)
+                        converter.convert(pdf_file)
+                    except Exception as conv_e:
+                        print(f"Converter hatası: {conv_e}")
+                        raise
         
-        if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
-            return True
-        return False
+        # PDF dosyasının oluştuğunu ve boş olmadığını kontrol et
+        if os.path.exists(pdf_file):
+            file_size = os.path.getsize(pdf_file)
+            print(f"PDF dosyası oluşturuldu: {pdf_file}, boyut: {file_size} bytes")
+            if file_size > 0:
+                return True
+            else:
+                print("PDF dosyası boş!")
+                return False
+        else:
+            print(f"PDF dosyası oluşturulamadı: {pdf_file}")
+            return False
     except ImportError as e:
         print(f"xlsx2pdf ImportError: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     except Exception as e:
         print(f"xlsx2pdf Exception: {type(e).__name__}: {e}")
