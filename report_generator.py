@@ -221,42 +221,79 @@ def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
     xlsx2pdf 1.0.4 kullanır.
     """
     try:
-        # xlsx2pdf 1.0.4 için doğru kullanım
+        # xlsx2pdf 1.0.4 paket yapısını keşfet
         import xlsx2pdf
-        print(f"xlsx2pdf modülü yüklendi: {xlsx2pdf}")
-        print(f"xlsx2pdf içeriği: {dir(xlsx2pdf)}")
+        import pkgutil
+        import importlib
         
-        # xlsx2pdf 1.0.4'ün yapısını kontrol et
-        if hasattr(xlsx2pdf, 'convert'):
-            print("xlsx2pdf.convert bulundu")
-            xlsx2pdf.convert(excel_file, pdf_file)
-        elif hasattr(xlsx2pdf, 'xlsx2pdf'):
-            print("xlsx2pdf.xlsx2pdf bulundu")
-            xlsx2pdf.xlsx2pdf(excel_file, pdf_file)
-        else:
-            # xlsx2pdf 1.0.4'te muhtemelen direkt convert fonksiyonu var
+        print(f"xlsx2pdf modülü yüklendi: {xlsx2pdf}")
+        print(f"xlsx2pdf __path__: {getattr(xlsx2pdf, '__path__', 'N/A')}")
+        
+        # Paket içindeki tüm modülleri listele
+        modules = []
+        if hasattr(xlsx2pdf, '__path__'):
+            for importer, modname, ispkg in pkgutil.iter_modules(xlsx2pdf.__path__):
+                modules.append(modname)
+                print(f"xlsx2pdf alt modülü bulundu: {modname} (paket: {ispkg})")
+        
+        # Farklı import yollarını dene
+        convert_func = None
+        
+        # 1. xlsx2pdf.converter modülünden
+        for mod_name in ['converter', 'xlsx2pdf', 'main', 'core']:
             try:
-                # Modülün __all__ veya __dict__'ini kontrol et
-                if 'convert' in dir(xlsx2pdf):
-                    convert_func = getattr(xlsx2pdf, 'convert')
-                    convert_func(excel_file, pdf_file)
+                full_mod_name = f'xlsx2pdf.{mod_name}'
+                mod = importlib.import_module(full_mod_name)
+                print(f"{full_mod_name} modülü yüklendi: {dir(mod)}")
+                
+                if hasattr(mod, 'convert'):
+                    convert_func = getattr(mod, 'convert')
+                    print(f"convert fonksiyonu {full_mod_name} modülünde bulundu")
+                    break
+                elif hasattr(mod, 'xlsx2pdf'):
+                    convert_func = getattr(mod, 'xlsx2pdf')
+                    print(f"xlsx2pdf fonksiyonu {full_mod_name} modülünde bulundu")
+                    break
+            except ImportError as e:
+                print(f"{full_mod_name} import edilemedi: {e}")
+                continue
+        
+        # 2. Eğer hala bulunamadıysa, xlsx2pdf paketinin __init__.py'sini kontrol et
+        if convert_func is None:
+            try:
+                # xlsx2pdf paketinin __init__.py'sinde ne var?
+                init_file = xlsx2pdf.__file__
+                print(f"xlsx2pdf __init__.py yolu: {init_file}")
+                
+                # Belki de xlsx2pdf'in CLI'si var, onu kullan
+                import subprocess
+                import sys
+                # xlsx2pdf komut satırı aracını dene
+                result = subprocess.run(
+                    [sys.executable, '-c', 
+                     f'import sys; sys.path.insert(0, "{os.path.dirname(init_file)}"); '
+                     f'from xlsx2pdf import *; '
+                     f'import xlsx2pdf.converter as conv; '
+                     f'conv.convert("{excel_file}", "{pdf_file}")'],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                if result.returncode == 0 and os.path.exists(pdf_file):
+                    print("xlsx2pdf inline script ile başarılı")
+                    if os.path.getsize(pdf_file) > 0:
+                        return True
                 else:
-                    # xlsx2pdf 1.0.4 için subprocess kullan
-                    import subprocess
-                    import sys
-                    result = subprocess.run(
-                        [sys.executable, '-m', 'xlsx2pdf', excel_file, pdf_file],
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        cwd=os.path.dirname(excel_file)
-                    )
-                    if result.returncode != 0:
-                        print(f"xlsx2pdf subprocess hatası: {result.stderr}")
-                        raise Exception(f"xlsx2pdf subprocess failed: {result.stderr}")
-            except Exception as sub_e:
-                print(f"Subprocess hatası: {sub_e}")
-                raise
+                    print(f"xlsx2pdf inline script hatası: {result.stderr}")
+            except Exception as e:
+                print(f"Inline script hatası: {e}")
+        
+        # 3. convert_func bulunduysa kullan
+        if convert_func:
+            print(f"convert_func çağrılıyor: {convert_func}")
+            convert_func(excel_file, pdf_file)
+        else:
+            raise Exception("xlsx2pdf'te convert fonksiyonu bulunamadı")
         
         # PDF dosyasının oluştuğunu ve boş olmadığını kontrol et
         if os.path.exists(pdf_file):
