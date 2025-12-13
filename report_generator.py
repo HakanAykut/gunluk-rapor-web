@@ -335,7 +335,62 @@ main()
         # 3. convert_func bulunduysa kullan
         if convert_func:
             print(f"convert_func çağrılıyor: {convert_func}")
-            convert_func(excel_file, pdf_file)
+            # Transformer sınıfı ise önce instance oluştur, sonra convert et
+            if 'Transformer' in str(type(convert_func)) or 'Transformer' in str(convert_func):
+                print("Transformer sınıfı kullanılıyor")
+                # Transformer muhtemelen sadece excel_file alıyor (workbook)
+                try:
+                    transformer = convert_func(excel_file)
+                    print(f"Transformer instance oluşturuldu: {type(transformer)}")
+                    print(f"Transformer metodları: {[m for m in dir(transformer) if not m.startswith('_') and callable(getattr(transformer, m))]}")
+                    
+                    # Transformer'ın metodlarını dene
+                    if hasattr(transformer, 'convert'):
+                        print("Transformer.convert() çağrılıyor")
+                        transformer.convert(pdf_file)
+                    elif hasattr(transformer, 'to_pdf'):
+                        print("Transformer.to_pdf() çağrılıyor")
+                        transformer.to_pdf(pdf_file)
+                    elif hasattr(transformer, 'save'):
+                        print("Transformer.save() çağrılıyor")
+                        transformer.save(pdf_file)
+                    elif hasattr(transformer, 'write'):
+                        print("Transformer.write() çağrılıyor")
+                        transformer.write(pdf_file)
+                    elif hasattr(transformer, '__call__'):
+                        print("Transformer() çağrılıyor (callable)")
+                        transformer(pdf_file)
+                    else:
+                        # Transformer'ın tüm özelliklerini listele
+                        all_attrs = [m for m in dir(transformer) if not m.startswith('_')]
+                        print(f"Transformer tüm özellikleri: {all_attrs}")
+                        raise Exception(f"Transformer'da convert/to_pdf/save/write metodu bulunamadı. Mevcut metodlar: {all_attrs}")
+                except TypeError as te:
+                    print(f"Transformer oluşturma hatası: {te}")
+                    # Belki Transformer farklı parametreler alıyor
+                    import inspect
+                    try:
+                        sig = inspect.signature(convert_func)
+                        print(f"Transformer __init__ imzası: {sig}")
+                        # Belki workbook objesi gerekiyor
+                        from openpyxl import load_workbook
+                        wb = load_workbook(excel_file)
+                        transformer = convert_func(wb)
+                        # Sonra convert et
+                        if hasattr(transformer, 'convert'):
+                            transformer.convert(pdf_file)
+                        elif hasattr(transformer, 'to_pdf'):
+                            transformer.to_pdf(pdf_file)
+                        elif hasattr(transformer, 'save'):
+                            transformer.save(pdf_file)
+                        else:
+                            raise Exception("Transformer workbook ile oluşturuldu ama convert metodu bulunamadı")
+                    except Exception as e2:
+                        print(f"Workbook ile deneme hatası: {e2}")
+                        raise te
+            else:
+                # Normal fonksiyon ise direkt çağır
+                convert_func(excel_file, pdf_file)
         else:
             raise Exception("xlsx2pdf'te convert fonksiyonu bulunamadı")
         
