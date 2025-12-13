@@ -221,14 +221,30 @@ def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
     xlsx2pdf kütüphanesi kullanır (sayfa ayarlarını daha iyi okur).
     """
     try:
-        from xlsx2pdf import convert
-        convert(excel_file, pdf_file)
-        if os.path.exists(pdf_file):
+        # xlsx2pdf 1.0.4 için farklı import denemeleri
+        try:
+            from xlsx2pdf import convert
+            convert(excel_file, pdf_file)
+        except (ImportError, AttributeError):
+            # Alternatif import yöntemi
+            try:
+                import xlsx2pdf
+                xlsx2pdf.convert(excel_file, pdf_file)
+            except (AttributeError, TypeError):
+                # xlsx2pdf 1.0.4 için yeni API
+                from xlsx2pdf.converter import convert
+                convert(excel_file, pdf_file)
+        
+        if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
             return True
         return False
-    except ImportError:
+    except ImportError as e:
+        print(f"xlsx2pdf ImportError: {e}")
         return False
-    except Exception:
+    except Exception as e:
+        print(f"xlsx2pdf Exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 # -------------------------------------------------
@@ -387,18 +403,33 @@ def generate_report(text, photos):
         pdf_created = False
         error_messages = []
         
+        print(f"PDF oluşturma başlıyor: {temp_xlsx} -> {pdf_filepath}")
+        
         try:
-            if excel_to_pdf_xlsx2pdf(temp_xlsx, pdf_filepath):
+            result = excel_to_pdf_xlsx2pdf(temp_xlsx, pdf_filepath)
+            print(f"xlsx2pdf sonucu: {result}")
+            if result:
                 pdf_created = True
+                print("PDF başarıyla oluşturuldu (xlsx2pdf)")
         except Exception as e:
-            error_messages.append(f"xlsx2pdf hatası: {str(e)}")
+            error_msg = f"xlsx2pdf hatası: {type(e).__name__}: {str(e)}"
+            error_messages.append(error_msg)
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
         
         if not pdf_created:
+            print("LibreOffice deneniyor...")
             try:
-                if excel_to_pdf_libreoffice(temp_xlsx, pdf_filepath):
+                result = excel_to_pdf_libreoffice(temp_xlsx, pdf_filepath)
+                print(f"LibreOffice sonucu: {result}")
+                if result:
                     pdf_created = True
+                    print("PDF başarıyla oluşturuldu (LibreOffice)")
             except Exception as e:
-                error_messages.append(f"LibreOffice hatası: {str(e)}")
+                error_msg = f"LibreOffice hatası: {type(e).__name__}: {str(e)}"
+                error_messages.append(error_msg)
+                print(error_msg)
         
         if not pdf_created:
             error_msg = "PDF oluşturulamadı. "
@@ -406,6 +437,7 @@ def generate_report(text, photos):
                 error_msg += " ".join(error_messages)
             else:
                 error_msg += "xlsx2pdf veya LibreOffice gerekli."
+            print(f"PDF oluşturma başarısız: {error_msg}")
             raise Exception(error_msg)
 
         return pdf_filepath
