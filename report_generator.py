@@ -223,19 +223,17 @@ def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
     try:
         # xlsx2pdf 1.0.4'te Transformer sınıfı kullanılır
         from xlsx2pdf.transformator import Transformer
-        from openpyxl import load_workbook
         
         print(f"Transformer ile PDF oluşturuluyor: {excel_file} -> {pdf_file}")
         
-        # Transformer workbook objesi alıyor
-        wb = load_workbook(excel_file)
-        transformer = Transformer(wb)
+        # Transformer dosya yolu (string) alıyor, workbook objesi değil!
+        transformer = Transformer(excel_file)
         
-        # PDF'e dönüştür
+        # PDF'e dönüştür - convert metodu PDF dosya yolu alıyor
         transformer.convert(pdf_file)
         
         if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
-            print(f"PDF başarıyla oluşturuldu: {pdf_file}")
+            print(f"PDF başarıyla oluşturuldu: {pdf_file}, boyut: {os.path.getsize(pdf_file)} bytes")
             return True
         else:
             print("PDF dosyası oluşturulamadı veya boş")
