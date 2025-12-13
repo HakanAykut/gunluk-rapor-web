@@ -218,63 +218,22 @@ def setup_print_area(ws):
 def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
     """
     Excel dosyasını PDF'e çevirir.
-    xlsx2pdf 1.0.4 kullanır - Transformer sınıfı ile.
+    xlsx2pdf kütüphanesi kullanır (sayfa ayarlarını daha iyi okur).
+    Lokalindeki çalışan kod ile aynı yöntem.
     """
     try:
-        # xlsx2pdf 1.0.4'te Transformer sınıfı kullanılır
-        from xlsx2pdf.transformator import Transformer
-        from openpyxl import load_workbook
-        
-        print(f"Transformer ile PDF oluşturuluyor: {excel_file} -> {pdf_file}")
-        
-        # Transformer'ın __init__ metodunda font sorunu var
-        # Workbook objesi ile deneyelim
-        wb = load_workbook(excel_file)
-        transformer = Transformer(wb)
-        
-        # transform() veya convert() metodunu dene
-        if hasattr(transformer, 'transform'):
-            transformer.transform(pdf_file)
-        elif hasattr(transformer, 'convert'):
-            transformer.convert(pdf_file)
-        elif hasattr(transformer, 'to_pdf'):
-            transformer.to_pdf(pdf_file)
-        else:
-            # Transformer'ın metodlarını listele
-            methods = [m for m in dir(transformer) if not m.startswith('_') and callable(getattr(transformer, m))]
-            print(f"Transformer metodları: {methods}")
-            raise Exception(f"Transformer'da transform/convert/to_pdf metodu bulunamadı. Mevcut metodlar: {methods}")
-        
+        # Lokalindeki çalışan kod: from xlsx2pdf import convert
+        from xlsx2pdf import convert
+        convert(excel_file, pdf_file)
         if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
-            print(f"PDF başarıyla oluşturuldu: {pdf_file}, boyut: {os.path.getsize(pdf_file)} bytes")
+            print(f"PDF başarıyla oluşturuldu (xlsx2pdf convert): {pdf_file}")
             return True
-        else:
-            print("PDF dosyası oluşturulamadı veya boş")
-            return False
-            
-    except (TypeError, AttributeError) as te:
-        # Transformer workbook ile çalışmıyorsa, dosya yolu ile dene
-        print(f"Transformer workbook ile çalışmadı, dosya yolu ile deneniyor: {te}")
-        try:
-            from xlsx2pdf.transformator import Transformer
-            transformer = Transformer(excel_file)
-            if hasattr(transformer, 'transform'):
-                transformer.transform(pdf_file)
-            elif hasattr(transformer, 'convert'):
-                transformer.convert(pdf_file)
-            else:
-                raise Exception("Transformer'da transform/convert metodu bulunamadı")
-            
-            if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
-                return True
-        except Exception as e2:
-            print(f"Dosya yolu ile de çalışmadı: {e2}")
-            return False
-    except ImportError as e:
-        print(f"xlsx2pdf ImportError: {e}")
+        return False
+    except ImportError:
+        print("xlsx2pdf.convert import edilemedi")
         return False
     except Exception as e:
-        print(f"xlsx2pdf Exception: {type(e).__name__}: {e}")
+        print(f"xlsx2pdf convert hatası: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
         return False
