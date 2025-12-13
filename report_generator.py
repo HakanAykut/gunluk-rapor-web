@@ -385,13 +385,28 @@ def generate_report(text, photos):
 
         # Önce xlsx2pdf ile dene
         pdf_created = False
-        if excel_to_pdf_xlsx2pdf(temp_xlsx, pdf_filepath):
-            pdf_created = True
-        elif excel_to_pdf_libreoffice(temp_xlsx, pdf_filepath):
-            pdf_created = True
-
+        error_messages = []
+        
+        try:
+            if excel_to_pdf_xlsx2pdf(temp_xlsx, pdf_filepath):
+                pdf_created = True
+        except Exception as e:
+            error_messages.append(f"xlsx2pdf hatası: {str(e)}")
+        
         if not pdf_created:
-            raise Exception("PDF oluşturulamadı. xlsx2pdf veya LibreOffice gerekli.")
+            try:
+                if excel_to_pdf_libreoffice(temp_xlsx, pdf_filepath):
+                    pdf_created = True
+            except Exception as e:
+                error_messages.append(f"LibreOffice hatası: {str(e)}")
+        
+        if not pdf_created:
+            error_msg = "PDF oluşturulamadı. "
+            if error_messages:
+                error_msg += " ".join(error_messages)
+            else:
+                error_msg += "xlsx2pdf veya LibreOffice gerekli."
+            raise Exception(error_msg)
 
         return pdf_filepath
 

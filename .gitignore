@@ -6,3 +6,4 @@ generated_pdfs/
 .DS_Store
 uploads/
 *.xlsx
+!rapor.xlsx
