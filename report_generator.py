@@ -239,13 +239,29 @@ def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
         # Farklı import yollarını dene
         convert_func = None
         
-        # 1. xlsx2pdf.converter modülünden
-        for mod_name in ['converter', 'xlsx2pdf', 'main', 'core']:
+        # 1. Bulunan modülleri kontrol et (cli, transformator)
+        for mod_name in modules + ['converter', 'xlsx2pdf', 'main', 'core']:
             try:
                 full_mod_name = f'xlsx2pdf.{mod_name}'
                 mod = importlib.import_module(full_mod_name)
                 print(f"{full_mod_name} modülü yüklendi: {dir(mod)}")
                 
+                # Modül içindeki tüm fonksiyonları kontrol et
+                for attr_name in dir(mod):
+                    if not attr_name.startswith('_'):
+                        attr = getattr(mod, attr_name)
+                        if callable(attr):
+                            print(f"  - {attr_name}: {attr}")
+                            # convert, xlsx2pdf, transform gibi isimleri kontrol et
+                            if 'convert' in attr_name.lower() or 'transform' in attr_name.lower() or 'xlsx2pdf' in attr_name.lower():
+                                convert_func = attr
+                                print(f"  -> Potansiyel convert fonksiyonu bulundu: {attr_name}")
+                                break
+                
+                if convert_func:
+                    break
+                    
+                # Direkt convert veya xlsx2pdf fonksiyonlarını kontrol et
                 if hasattr(mod, 'convert'):
                     convert_func = getattr(mod, 'convert')
                     print(f"convert fonksiyonu {full_mod_name} modülünde bulundu")
@@ -254,39 +270,67 @@ def excel_to_pdf_xlsx2pdf(excel_file, pdf_file):
                     convert_func = getattr(mod, 'xlsx2pdf')
                     print(f"xlsx2pdf fonksiyonu {full_mod_name} modülünde bulundu")
                     break
+                elif hasattr(mod, 'transform'):
+                    convert_func = getattr(mod, 'transform')
+                    print(f"transform fonksiyonu {full_mod_name} modülünde bulundu")
+                    break
             except ImportError as e:
                 print(f"{full_mod_name} import edilemedi: {e}")
                 continue
         
-        # 2. Eğer hala bulunamadıysa, xlsx2pdf paketinin __init__.py'sini kontrol et
+        # 2. cli modülünü subprocess ile çağır (command-line aracı olabilir)
         if convert_func is None:
             try:
-                # xlsx2pdf paketinin __init__.py'sinde ne var?
-                init_file = xlsx2pdf.__file__
-                print(f"xlsx2pdf __init__.py yolu: {init_file}")
-                
-                # Belki de xlsx2pdf'in CLI'si var, onu kullan
                 import subprocess
                 import sys
-                # xlsx2pdf komut satırı aracını dene
+                
+                # xlsx2pdf cli modülünü Python script olarak çalıştır
+                cli_script = f"""
+import sys
+sys.path.insert(0, '{os.path.dirname(xlsx2pdf.__file__)}')
+from xlsx2pdf.cli import main
+sys.argv = ['xlsx2pdf', '{excel_file}', '{pdf_file}']
+main()
+"""
                 result = subprocess.run(
-                    [sys.executable, '-c', 
-                     f'import sys; sys.path.insert(0, "{os.path.dirname(init_file)}"); '
-                     f'from xlsx2pdf import *; '
-                     f'import xlsx2pdf.converter as conv; '
-                     f'conv.convert("{excel_file}", "{pdf_file}")'],
+                    [sys.executable, '-c', cli_script],
                     capture_output=True,
                     text=True,
                     timeout=60
                 )
                 if result.returncode == 0 and os.path.exists(pdf_file):
-                    print("xlsx2pdf inline script ile başarılı")
+                    print("xlsx2pdf cli modülü ile başarılı")
                     if os.path.getsize(pdf_file) > 0:
                         return True
                 else:
-                    print(f"xlsx2pdf inline script hatası: {result.stderr}")
+                    print(f"xlsx2pdf cli hatası (returncode: {result.returncode}): {result.stderr}")
+                    
+                # Alternatif: transformator modülünü dene
+                try:
+                    from xlsx2pdf import transformator
+                    print(f"transformator modülü: {dir(transformator)}")
+                    # transformator modülünün fonksiyonlarını kontrol et
+                    for attr_name in dir(transformator):
+                        if not attr_name.startswith('_') and callable(getattr(transformator, attr_name)):
+                            print(f"transformator.{attr_name} bulundu")
+                            if 'transform' in attr_name.lower() or 'convert' in attr_name.lower():
+                                transform_func = getattr(transformator, attr_name)
+                                # transformator'un nasıl kullanıldığını dene
+                                try:
+                                    # Muhtemelen (excel_file, pdf_file) parametreleri alır
+                                    transform_func(excel_file, pdf_file)
+                                    if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
+                                        print("transformator ile başarılı")
+                                        return True
+                                except Exception as tf_e:
+                                    print(f"transformator.{attr_name} çağrı hatası: {tf_e}")
+                except Exception as tr_e:
+                    print(f"transformator import/çağrı hatası: {tr_e}")
+                    
             except Exception as e:
-                print(f"Inline script hatası: {e}")
+                print(f"CLI/transformator deneme hatası: {e}")
+                import traceback
+                traceback.print_exc()
         
         # 3. convert_func bulunduysa kullan
         if convert_func:
