@@ -8,6 +8,44 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
+@app.route("/view-pdf/<filename>", methods=["GET"])
+def view_pdf(filename):
+    """PDF görüntüleme sayfası"""
+    return render_template("view_pdf.html", filename=filename)
+
+@app.route("/download-pdf/<filename>", methods=["GET"])
+def download_pdf(filename):
+    """PDF indirme endpoint'i"""
+    try:
+        from pdf_generator import OUTPUT_DIR
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        if not os.path.exists(filepath):
+            return jsonify({"error": "PDF bulunamadı"}), 404
+        return send_file(
+            filepath,
+            as_attachment=True,  # İndirme
+            download_name=filename,
+            mimetype="application/pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/pdf/<filename>", methods=["GET"])
+def serve_pdf(filename):
+    """PDF dosyasını tarayıcıda göster"""
+    try:
+        from pdf_generator import OUTPUT_DIR
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        if not os.path.exists(filepath):
+            return jsonify({"error": "PDF bulunamadı"}), 404
+        return send_file(
+            filepath,
+            as_attachment=False,  # Tarayıcıda görüntüle
+            mimetype="application/pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/generator-test", methods=["POST"])
 def generator_test():
     try:
@@ -52,12 +90,13 @@ def generator_test():
         }
 
         filepath = generate_report(data, photos)
-
-        return send_file(
-            filepath,
-            as_attachment=False,  # Tarayıcıda görüntüle, direkt indirme
-            mimetype="application/pdf"
-        )
+        
+        # PDF dosya adını al (URL için)
+        filename = os.path.basename(filepath)
+        
+        # PDF görüntüleme sayfasına yönlendir
+        from flask import redirect, url_for
+        return redirect(url_for('view_pdf', filename=filename))
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
