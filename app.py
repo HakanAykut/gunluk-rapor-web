@@ -11,7 +11,8 @@ def index():
 @app.route("/view-pdf/<filename>", methods=["GET"])
 def view_pdf(filename):
     """PDF görüntüleme sayfası"""
-    return render_template("view_pdf.html", filename=filename)
+    tarih = request.args.get("tarih", "")
+    return render_template("view_pdf.html", filename=filename, tarih=tarih)
 
 @app.route("/download-pdf/<filename>", methods=["GET"])
 def download_pdf(filename):
@@ -21,10 +22,21 @@ def download_pdf(filename):
         filepath = os.path.join(OUTPUT_DIR, filename)
         if not os.path.exists(filepath):
             return jsonify({"error": "PDF bulunamadı"}), 404
+        
+        # İndirme dosya adını oluştur: Günlük_Rapor_{Tarih}.pdf
+        tarih = request.args.get("tarih", "")
+        if tarih:
+            # Tarih formatını dosya adı için uygun hale getir (noktaları alt çizgi ile değiştir)
+            tarih_for_filename = tarih.replace(".", "_")
+            download_filename = f"Günlük_Rapor_{tarih_for_filename}.pdf"
+        else:
+            # Tarih yoksa orijinal dosya adını kullan
+            download_filename = filename
+        
         return send_file(
             filepath,
             as_attachment=True,  # İndirme
-            download_name=filename,
+            download_name=download_filename,
             mimetype="application/pdf"
         )
     except Exception as e:
@@ -94,9 +106,9 @@ def generator_test():
         # PDF dosya adını al (URL için)
         filename = os.path.basename(filepath)
         
-        # PDF görüntüleme sayfasına yönlendir
+        # PDF görüntüleme sayfasına yönlendir (tarih bilgisini de gönder)
         from flask import redirect, url_for
-        return redirect(url_for('view_pdf', filename=filename))
+        return redirect(url_for('view_pdf', filename=filename, tarih=tarih_formatted))
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:

@@ -95,7 +95,7 @@
         <div class="pdf-header">
             <h2>Günlük Faaliyet Raporu - PDF</h2>
             <div class="btn-group">
-                <a href="/download-pdf/{{ filename }}" class="btn btn-primary" download>
+                <a href="/download-pdf/{{ filename }}{% if tarih %}?tarih={{ tarih }}{% endif %}" class="btn btn-primary" download>
                     📥 PDF İndir
                 </a>
                 <a href="/" class="btn btn-secondary">
