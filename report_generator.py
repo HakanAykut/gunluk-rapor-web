@@ -1,10 +1,10 @@
 from PIL import Image as PILImage
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm, mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as ReportLabImage, KeepTogether
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as ReportLabImage
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from datetime import datetime
@@ -19,8 +19,28 @@ import shutil
 # -------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "generated_pdfs")
+LOGO_FILE = os.path.join(BASE_DIR, "Resim1.png")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# -------------------------------------------------
+# TÜRKÇE FONT AYARLARI
+# -------------------------------------------------
+def setup_font():
+    """Türkçe karakter desteği için font ayarla"""
+    # Helvetica Türkçe karakterleri destekler (çoğu durumda)
+    # DejaVu Sans daha iyi ama yüklü olmayabilir
+    try:
+        # DejaVu Sans font dosyası varsa kullan
+        dejavu_path = os.path.join(BASE_DIR, "DejaVuSans.ttf")
+        if os.path.exists(dejavu_path):
+            pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_path))
+            return 'DejaVuSans'
+    except:
+        pass
+    
+    # Helvetica kullan (Türkçe karakterler çoğu zaman çalışır)
+    return 'Helvetica'
 
 # -------------------------------------------------
 # TÜRKÇE NORMALIZE
@@ -39,20 +59,18 @@ def normalize(text: str) -> str:
     )
 
 # -------------------------------------------------
-# REPORTLAB İLE PDF OLUŞTUR (Render-compatible)
-# Excel şablonu formatında, tek sayfalık
+# EXCEL TABLO YAPISINI TAKLİT EDEN PDF OLUŞTUR
 # -------------------------------------------------
-def create_pdf_with_reportlab(data, photo_files, pdf_filepath):
+def create_pdf_with_reportlab(data, photo_files, pdf_filepath, logo_path=None):
     """
-    ReportLab kullanarak direkt PDF oluşturur.
-    Excel şablonu formatında, tek sayfalık düzen.
-    Türkçe karakter desteği ile.
+    Excel'deki tablo yapısını birebir taklit ederek PDF oluşturur.
+    Ana layout bir Table grid'dir (16 sütun: A-P).
     """
     try:
-        # Türkçe karakter desteği için Helvetica kullan (ReportLab'in varsayılan fontu Türkçe destekler)
-        # Eğer sorun olursa, DejaVu Sans gibi Unicode font kullanabiliriz
+        # Font ayarla
+        font_name = setup_font()
         
-        # PDF dokümanı oluştur - Excel şablonuna benzer margin'ler
+        # PDF dokümanı oluştur - A4, küçük margin'ler
         doc = SimpleDocTemplate(
             pdf_filepath,
             pagesize=A4,
@@ -62,178 +80,291 @@ def create_pdf_with_reportlab(data, photo_files, pdf_filepath):
             bottomMargin=0.5*cm
         )
         
-        # Stil tanımlamaları - Excel formatına uygun
+        if logo_path is None:
+            logo_path = LOGO_FILE
+        
         styles = getSampleStyleSheet()
         
-        # Türkçe karakter desteği için encoding ayarı
-        # ReportLab Paragraph HTML benzeri format kullanır ve UTF-8 destekler
+        # Excel'deki gibi sütun genişlikleri (16 sütun: A-P)
+        # Toplam genişlik: A4 genişliği - margin'ler = ~19cm
+        col_widths = [
+            1.0*cm,  # A
+            1.2*cm,  # B
+            1.2*cm,  # C
+            1.2*cm,  # D
+            1.2*cm,  # E
+            1.2*cm,  # F
+            1.2*cm,  # G
+            1.2*cm,  # H
+            1.2*cm,  # I
+            1.2*cm,  # J
+            1.2*cm,  # K
+            1.2*cm,  # L
+            1.2*cm,  # M
+            1.2*cm,  # N
+            1.2*cm,  # O
+            1.2*cm,  # P
+        ]
         
-        # Proje başlığı stili (D2 hücresi - üstte sol)
+        # Tablo verileri - Excel'deki gibi satır satır
+        table_data = []
+        
+        # Satır 1: Boş
+        table_data.append([''] * 16)
+        
+        # Satır 2: Header - Logo (A2-C2), Proje başlığı (D2-M2), Rapor No (N2), Tarih (O2-P2)
+        row2 = [''] * 16
+        
+        # Logo - A2-C2 (birleştirilmiş görünüm için A2'ye koy, C2'ye kadar boş)
+        if logo_path and os.path.exists(logo_path):
+            try:
+                logo_img = ReportLabImage(logo_path, width=3*cm, height=1.5*cm, kind='proportional')
+                row2[0] = logo_img  # A sütunu
+            except Exception as e:
+                print(f"Logo yüklenemedi: {e}")
+                row2[0] = Paragraph("LOGO", ParagraphStyle('Logo', parent=styles['Normal'], 
+                                                          fontSize=8, fontName=font_name))
+        else:
+            row2[0] = Paragraph("LOGO", ParagraphStyle('Logo', parent=styles['Normal'], 
+                                                      fontSize=8, fontName=font_name))
+        
+        # Proje başlığı - D2-M2 (birleştirilmiş görünüm için D2'ye koy)
+        project_title = data.get("proje_basligi", "FETİHTEPE MERKEZ CAMİ'İ GÜÇLENDİRME VE YENİLEME PROJESİ")
         project_style = ParagraphStyle(
-            'ProjectStyle',
+            'ProjectTitle',
             parent=styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#000000'),
-            alignment=TA_LEFT,
-            spaceAfter=5,
-            fontName='Helvetica'
+            fontSize=12,
+            fontName=f'{font_name}-Bold',
+            textColor=colors.black,
+            alignment=TA_CENTER
         )
+        row2[3] = Paragraph(project_title, project_style)  # D sütunu
         
-        # Rapor No/Tarih stili (N2, N3 hücreleri - üstte sağ)
+        # Rapor No - N2
+        rapor_no_text = f"<b>Günlük Rapor No:</b><br/>{data.get('rapor_no', '')}"
         header_style = ParagraphStyle(
-            'HeaderStyle',
+            'Header',
             parent=styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#000000'),
-            alignment=TA_LEFT,
-            spaceAfter=3,
-            fontName='Helvetica'
+            fontSize=9,
+            fontName=font_name,
+            alignment=TA_RIGHT
         )
+        row2[13] = Paragraph(rapor_no_text, header_style)  # N sütunu
         
-        # Ana başlık stili (B5 hücresi)
-        main_title_style = ParagraphStyle(
-            'MainTitleStyle',
+        table_data.append(row2)
+        
+        # Satır 3: Tarih (N3)
+        row3 = [''] * 16
+        tarih_text = f"<b>Tarih:</b><br/>{data.get('tarih', '')}"
+        row3[13] = Paragraph(tarih_text, header_style)  # N sütunu
+        table_data.append(row3)
+        
+        # Satır 4: Boş
+        table_data.append([''] * 16)
+        
+        # Satır 5: "GÜNLÜK FAALİYET RAPORU" gri bar (B5-P5)
+        row5 = [''] * 16
+        daily_report_style = ParagraphStyle(
+            'DailyReport',
             parent=styles['Normal'],
-            fontSize=14,
-            textColor=colors.HexColor('#000000'),
-            alignment=TA_CENTER,
-            spaceAfter=10,
-            fontName='Helvetica-Bold'
+            fontSize=12,
+            fontName=f'{font_name}-Bold',
+            textColor=colors.white,
+            alignment=TA_CENTER
         )
+        row5[1] = Paragraph("GÜNLÜK FAALİYET RAPORU", daily_report_style)  # B sütunu
+        table_data.append(row5)
         
-        # İmalatın Cinsi başlığı (B7 hücresi)
-        section_style = ParagraphStyle(
-            'SectionStyle',
+        # Satır 6: Boş
+        table_data.append([''] * 16)
+        
+        # Satır 7: "YAPILAN İŞLER:" başlığı (B7)
+        row7 = [''] * 16
+        works_title_style = ParagraphStyle(
+            'WorksTitle',
             parent=styles['Normal'],
             fontSize=11,
-            textColor=colors.HexColor('#000000'),
-            alignment=TA_LEFT,
-            spaceAfter=5,
-            fontName='Helvetica-Bold'
+            fontName=f'{font_name}-Bold',
+            alignment=TA_LEFT
         )
+        row7[1] = Paragraph("YAPILAN İŞLER:", works_title_style)  # B sütunu
+        table_data.append(row7)
         
-        # Yapılan işler stili (B8-B11 hücreleri)
+        # Satır 8-13: Yapılan işler listesi (B8-B13)
         work_item_style = ParagraphStyle(
-            'WorkItemStyle',
+            'WorkItem',
             parent=styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#000000'),
+            fontSize=9,
+            fontName=font_name,
             alignment=TA_LEFT,
-            spaceAfter=4,
-            leftIndent=10,
-            fontName='Helvetica'
+            leftIndent=0.3*cm,
+            leading=11
         )
+        yapilan_isler = data.get("yapilan_isler", [])
+        for i in range(6):
+            row = [''] * 16
+            if i < len(yapilan_isler):
+                row[1] = Paragraph(f"• {yapilan_isler[i]}", work_item_style)  # B sütunu
+            else:
+                # Boş satır - altı çizgili görünüm için
+                row[1] = Paragraph("_", ParagraphStyle('EmptyLine', parent=styles['Normal'], 
+                                                      fontSize=8, fontName=font_name, 
+                                                      textColor=colors.grey))
+            table_data.append(row)
         
-        # PDF içeriği
-        story = []
+        # Satır 14-27: Boş satırlar (altı çizgili görünüm için)
+        for _ in range(14):
+            row = [''] * 16
+            row[1] = Paragraph("_", ParagraphStyle('EmptyLine', parent=styles['Normal'], 
+                                                  fontSize=8, fontName=font_name, 
+                                                  textColor=colors.grey))
+            table_data.append(row)
         
-        # Üst kısım: Proje adı (D2) ve Rapor No/Tarih (N2, N3)
-        # Excel'de D2 sol tarafta, N2-N3 sağ tarafta
-        header_table_data = []
-        left_col = []
-        right_col = []
+        # Satır 28: "İMALAT FOTOĞRAFLARI" başlığı (B28-P28)
+        row28 = [''] * 16
+        photos_title_style = ParagraphStyle(
+            'PhotosTitle',
+            parent=styles['Normal'],
+            fontSize=11,
+            fontName=f'{font_name}-Bold',
+            alignment=TA_CENTER
+        )
+        row28[1] = Paragraph("İMALAT FOTOĞRAFLARI", photos_title_style)  # B sütunu
+        table_data.append(row28)
         
-        # Sol kolon: Proje adı (D2) - Türkçe karakterler için doğrudan kullan
-        project_name = "FETİHTEPE CAMİİ GÜÇLENDİRME VE YENİLEME PROJESİ"
-        left_col.append(Paragraph(project_name, project_style))
-        left_col.append(Spacer(1, 0.2*cm))
+        # Fotoğraflar için satır sayısı hesapla
+        # Her fotoğraf yaklaşık 18 satır yüksekliğinde (Excel'deki gibi)
+        # Fotoğraf pozisyonları: B29-I47, J29-P47, B52-I70, J52-P70, B75-I93, J75-P93, B98-I116, J98-P116
+        photo_start_rows = [28, 28, 51, 51, 74, 74, 97, 97]  # Satır indeksleri (0-based)
+        photo_start_cols = [1, 9, 1, 9, 1, 9, 1, 9]  # B=1, J=9
+        photo_end_cols = [8, 15, 8, 15, 8, 15, 8, 15]  # I=8, P=15
         
-        # Sağ kolon: Rapor No ve Tarih (N2, N3)
-        if data["rapor_no"]:
-            right_col.append(Paragraph(f"Günlük Rapor No: {data['rapor_no']}", header_style))
-        if data["tarih"]:
-            right_col.append(Paragraph(f"Tarih: {data['tarih']}", header_style))
+        # Fotoğraf boyutları
+        photo_box_width = sum(col_widths[1:9])  # B-I arası genişlik
+        photo_box_height = 4.5*cm  # Yaklaşık 18 satır yüksekliği
         
-        # Header tablosu
-        header_table = Table([[left_col, right_col]], colWidths=[12*cm, 6*cm])
-        header_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ]))
-        story.append(header_table)
-        story.append(Spacer(1, 0.3*cm))
-        
-        # Ana başlık: GÜNLÜK FAALİYET RAPORU (B5)
-        story.append(Paragraph("GÜNLÜK FAALİYET RAPORU", main_title_style))
-        story.append(Spacer(1, 0.4*cm))
-        
-        # İMALATIN CİNSİ başlığı (B7)
-        story.append(Paragraph("İMALATIN CİNSİ", section_style))
-        story.append(Spacer(1, 0.2*cm))
-        
-        # Yapılan işler listesi (B8-B11) - Excel'de "-" ile başlıyor
-        for i, is_item in enumerate(data["yapilan_isler"]):
-            story.append(Paragraph(f"- {is_item}", work_item_style))
-        
-        story.append(Spacer(1, 0.3*cm))
-        
-        # Fotoğraflar - Excel'deki gibi 2x4 grid (8 fotoğraf)
-        if photo_files:
-            # Fotoğrafları Excel'deki gibi 2 sütun, 4 satır grid'de göster
-            photos_per_row = 2
-            # Excel'de fotoğraflar B29-I47, J29-P47 gibi alanlarda
-            # A4 sayfasında yaklaşık 8cm x 5cm per fotoğraf
-            photo_width = 8*cm
-            photo_height = 5*cm
+        # Fotoğrafları hazırla ve tabloya ekle
+        for photo_idx in range(8):
+            start_row = photo_start_rows[photo_idx]
+            start_col = photo_start_cols[photo_idx]
+            end_col = photo_end_cols[photo_idx]
             
-            for i in range(0, len(photo_files), photos_per_row):
-                row_photos = photo_files[i:i+photos_per_row]
-                row_data = []
-                
-                for photo_path in row_photos:
-                    try:
-                        # Fotoğrafı boyutlandır
-                        pil_img = PILImage.open(photo_path)
-                        # Aspect ratio'yu koru
-                        pil_img.thumbnail((int(photo_width*2), int(photo_height*2)), PILImage.Resampling.LANCZOS)
-                        
-                        # Geçici dosyaya kaydet
-                        temp_photo = os.path.join(os.path.dirname(photo_path), f"_pdf_{os.path.basename(photo_path)}")
-                        pil_img.save(temp_photo)
-                        
-                        img = ReportLabImage(temp_photo, width=photo_width, height=photo_height, kind='proportional')
-                        row_data.append(img)
-                    except Exception as e:
-                        print(f"Fotoğraf yüklenemedi {photo_path}: {e}")
-                        row_data.append(Paragraph("Fotoğraf yüklenemedi", work_item_style))
-                
-                # Eksik sütunları doldur
-                while len(row_data) < photos_per_row:
-                    row_data.append(Spacer(1, 1))
-                
-                # Tablo oluştur - Excel'deki gibi 2 sütun
-                photo_table = Table([row_data], colWidths=[photo_width]*photos_per_row)
-                photo_table.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-                    ('TOPPADDING', (0, 0), (-1, -1), 2),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-                ]))
-                story.append(photo_table)
-                story.append(Spacer(1, 0.2*cm))
+            # Eksik satırları ekle
+            while len(table_data) <= start_row + 18:
+                table_data.append([''] * 16)
+            
+            if photo_idx < len(photo_files):
+                photo_path = photo_files[photo_idx]
+                try:
+                    # Fotoğrafı yükle ve boyutlandır
+                    pil_img = PILImage.open(photo_path)
+                    pil_img.thumbnail((int(photo_box_width*2), int(photo_box_height*2)), 
+                                    PILImage.Resampling.LANCZOS)
+                    
+                    # Geçici dosyaya kaydet
+                    temp_photo = os.path.join(os.path.dirname(photo_path), 
+                                             f"_pdf_temp_{os.path.basename(photo_path)}")
+                    pil_img.save(temp_photo)
+                    
+                    # ReportLab Image oluştur
+                    img = ReportLabImage(temp_photo, width=photo_box_width, 
+                                       height=photo_box_height, kind='proportional')
+                    
+                    # Fotoğraf ve etiket için iç tablo
+                    photo_cell_data = [
+                        [img],
+                        [Paragraph(f"FOTO-{photo_idx + 1}", 
+                                  ParagraphStyle('PhotoLabel', parent=styles['Normal'], 
+                                               fontSize=8, alignment=TA_CENTER, fontName=font_name))]
+                    ]
+                    photo_cell = Table(photo_cell_data, 
+                                     colWidths=[photo_box_width], 
+                                     rowHeights=[photo_box_height, 0.3*cm])
+                    photo_cell.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                        ('TOPPADDING', (0, 0), (0, 0), 2),
+                        ('BOTTOMPADDING', (0, 0), (0, 0), 2),
+                    ]))
+                    
+                    # Fotoğrafı tabloya ekle (birleştirilmiş hücre simülasyonu)
+                    # İlk hücreye fotoğrafı koy, diğer hücreleri boş bırak
+                    table_data[start_row][start_col] = photo_cell
+                    
+                except Exception as e:
+                    print(f"Fotoğraf yüklenemedi {photo_path}: {e}")
+        
+        # Ana tablo oluştur
+        main_table = Table(table_data, colWidths=col_widths, repeatRows=0)
+        
+        # Tablo stil ayarları
+        table_style = [
+            # Grid çizgileri (Excel'deki gibi)
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            # Hizalama
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            # Padding
+            ('LEFTPADDING', (0, 0), (-1, -1), 2),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            # Gri bar: "GÜNLÜK FAALİYET RAPORU" (Satır 5, B-P)
+            ('BACKGROUND', (1, 4), (15, 4), colors.HexColor('#808080')),
+            # Gri bar: "İMALAT FOTOĞRAFLARI" (Satır 28, B-P)
+            ('BACKGROUND', (1, 27), (15, 27), colors.HexColor('#D3D3D3')),
+            # Proje başlığı ortalanmış (D2-M2)
+            ('ALIGN', (3, 1), (12, 1), 'CENTER'),
+            # Rapor No ve Tarih sağa hizalı (N2-N3)
+            ('ALIGN', (13, 1), (13, 2), 'RIGHT'),
+        ]
+        
+        main_table.setStyle(TableStyle(table_style))
+        
+        # Story oluştur
+        story = []
+        story.append(main_table)
+        
+        # Footer
+        story.append(Spacer(1, 0.2*cm))
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontSize=7,
+            fontName=font_name,
+            textColor=colors.HexColor('#666666'),
+            alignment=TA_LEFT
+        )
+        story.append(Paragraph(
+            "İşbu dokümanda HASSAS bilgi bulunmamaktadır. / This document does not contain SENSITIVE information.",
+            footer_style
+        ))
         
         # PDF'i oluştur
         doc.build(story)
         
+        # Geçici dosyaları temizle
+        for photo_path in photo_files:
+            temp_photo = os.path.join(os.path.dirname(photo_path), 
+                                     f"_pdf_temp_{os.path.basename(photo_path)}")
+            if os.path.exists(temp_photo):
+                try:
+                    os.remove(temp_photo)
+                except:
+                    pass
+        
         if os.path.exists(pdf_filepath) and os.path.getsize(pdf_filepath) > 0:
-            print(f"PDF başarıyla oluşturuldu (ReportLab): {pdf_filepath}")
+            print(f"PDF başarıyla oluşturuldu: {pdf_filepath}")
             return True
         return False
         
     except Exception as e:
-        print(f"ReportLab PDF oluşturma hatası: {type(e).__name__}: {e}")
+        print(f"PDF oluşturma hatası: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
         return False
-
-# -------------------------------------------------
-# ESKİ KODLAR KALDIRILDI - Artık Excel → PDF dönüştürme yapmıyoruz
-# Render-compatible: Sadece ReportLab kullanıyoruz
-# Tüm excel_to_pdf_xlsx2pdf ve excel_to_pdf_libreoffice fonksiyonları kaldırıldı
-# -------------------------------------------------
 
 # -------------------------------------------------
 # METİN PARSE ET
@@ -275,19 +406,17 @@ def parse_text(text):
 # -------------------------------------------------
 # ANA FONKSİYON
 # -------------------------------------------------
-def generate_report(text, photos):
+def generate_report(data, photos):
     """
-    Form'dan gelen metin ve fotoğrafları kullanarak PDF oluşturur.
+    Form'dan gelen data ve fotoğrafları kullanarak PDF oluşturur.
     
     Args:
-        text: Form'dan gelen rapor metni
+        data: Dict - {"tarih": "...", "rapor_no": "...", "yapilan_isler": [...]}
         photos: Flask FileStorage listesi (fotoğraflar)
     
     Returns:
         PDF dosyasının yolu
     """
-    # Metni parse et
-    data = parse_text(text)
     safe_date = re.sub(r"[^\d.]", "", data["tarih"])
     
     # Geçici dizin oluştur
@@ -299,24 +428,21 @@ def generate_report(text, photos):
         photo_files = []
         for i, photo in enumerate(photos[:8]):
             if photo.filename:
-                # Dosya uzantısını al
                 ext = os.path.splitext(photo.filename)[1] or ".jpg"
                 temp_photo_path = os.path.join(temp_dir, f"photo_{i+1}{ext}")
                 photo.save(temp_photo_path)
                 photo_files.append(temp_photo_path)
 
-        # PDF oluştur - ReportLab ile direkt (Render-compatible)
-        # Excel kullanmıyoruz, sadece ReportLab ile PDF oluşturuyoruz
+        # PDF oluştur
         pdf_filename = f"rapor-{safe_date}-{uuid.uuid4().hex[:8]}.pdf"
         pdf_filepath = os.path.join(OUTPUT_DIR, pdf_filename)
         
-        print(f"PDF oluşturma başlıyor (ReportLab): {pdf_filepath}")
+        print(f"PDF oluşturma başlıyor: {pdf_filepath}")
         
-        # ReportLab ile PDF oluştur
         pdf_created = create_pdf_with_reportlab(data, photo_files, pdf_filepath)
         
         if not pdf_created:
-            raise Exception("PDF oluşturulamadı. ReportLab hatası.")
+            raise Exception("PDF oluşturulamadı.")
 
         return pdf_filepath
 
@@ -331,7 +457,6 @@ def generate_report(text, photos):
         
         # Geçici dizini temizle
         try:
-            import shutil
             shutil.rmtree(temp_dir)
         except:
             pass
