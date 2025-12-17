@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Görüntüle - Günlük Faaliyet Raporu</title>
+    <title>PDF Görüntüle - METEBABA RAPORATÖR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
@@ -35,7 +38,9 @@
         }
         .pdf-header h2 {
             margin: 0;
-            font-size: 18px;
+            font-size: 20px;
+            font-family: 'Fredoka One', cursive;
+            letter-spacing: 1px;
         }
         .btn-group {
             display: flex;
@@ -93,7 +98,7 @@
 <body>
     <div class="pdf-container">
         <div class="pdf-header">
-            <h2>Günlük Faaliyet Raporu - PDF</h2>
+            <h2>METEBABA RAPORATÖR - PDF</h2>
             <div class="btn-group">
                 <a href="/download-pdf/{{ filename }}{% if tarih %}?tarih={{ tarih }}{% endif %}" class="btn btn-primary" download>
                     📥 PDF İndir

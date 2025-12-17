@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Günlük Faaliyet Raporu</title>
+    <title>METEBABA RAPORATÖR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
@@ -13,18 +16,142 @@
             max-width: 800px;
             margin: 40px auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            /* Kamuflaj resminin saydam hali ile arka plan */
+            background-color: #f5f5f5; /* Fallback */
+            background-image: url('/static/camouflage.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/static/camouflage.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.15; /* Çok saydam */
+            z-index: -1;
+            pointer-events: none;
         }
         .container {
-            background-color: white;
+            background-color: rgba(255, 255, 255, 0.95); /* Hafif beyaz overlay */
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: visible; /* Badge'in taşmasına izin ver */
+            position: relative;
         }
-        h1 {
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/static/camouflage.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.45; /* Daha belirgin kamuflaj */
+            border-radius: 8px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .container > * {
+            position: relative;
+            z-index: 1;
+        }
+        .title-wrapper {
+            position: relative;
             margin-bottom: 30px;
-            color: #333;
             text-align: center;
+        }
+        .title-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 5px; /* Boşluğu azalt (10px -> 5px) */
+        }
+        .crown-left, .crown-right {
+            max-width: 50px;
+            height: auto;
+            flex-shrink: 0;
+            /* Beyaz çerçeveyi kaldırmak için - multiply beyazı şeffaf yapar */
+            mix-blend-mode: multiply;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        /* Eğer multiply işe yaramazsa, darken veya screen deneyebiliriz */
+        /* Ancak en iyi çözüm PNG'nin şeffaf arka planlı olması */
+        .title-top h1 {
+            margin: 0;
+            font-family: 'Fredoka One', cursive;
+            font-size: 36px;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: #667eea; /* Fallback for browsers that don't support gradient text */
+        }
+        .title-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            padding-left: 60px; /* RAPORATÖR'ü sağa kaydır */
+        }
+        .title-bottom h2 {
+            margin: 0;
+            font-family: 'Fredoka One', cursive;
+            font-size: 36px; /* METEBABA ile aynı boyut */
+            letter-spacing: 2px; /* METEBABA ile aynı letter-spacing */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: #667eea; /* Fallback */
+        }
+        .title-badge {
+            max-width: 130px; /* Daha büyük */
+            height: auto;
+            opacity: 0.9;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            position: relative;
+            z-index: 2; /* Raporatörün üzerine taşsın */
+            margin-left: -60px; /* Daha sola al, RAPORATÖR'ün son harflerinin üzerine gelsin */
+            margin-top: 50px; /* Aşağıya al */
+        }
+        
+        @supports (-webkit-background-clip: text) {
+            .title-top h1,
+            .title-bottom h2 {
+                color: transparent;
+            }
+        }
+        
+        /* Mobil için responsive */
+        @media (max-width: 600px) {
+            .title-top h1 {
+                font-size: 28px;
+            }
+            .title-bottom h2 {
+                font-size: 28px; /* METEBABA ile aynı boyut */
+            }
+            .crown-left, .crown-right {
+                max-width: 40px;
+            }
+            .title-badge {
+                max-width: 90px; /* Mobilde de biraz büyük */
+            }
         }
         .form-group {
             margin-bottom: 25px;
@@ -33,26 +160,34 @@
             display: block;
             margin-bottom: 8px;
             font-weight: bold;
-            color: #555;
+            color: #333; /* Daha koyu renk */
+            font-size: 17px; /* Biraz daha büyük */
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8); /* Okunabilirlik için hafif gölge */
         }
         input[type="text"],
         input[type="date"] {
             width: 100%;
             padding: 12px;
             font-size: 16px;
-            border: 1px solid #ddd;
+            border: 2px solid #999; /* Daha belirgin border */
             border-radius: 4px;
             font-family: Arial, sans-serif;
+            color: #222; /* Daha koyu yazı rengi */
+            font-weight: 500; /* Biraz daha kalın */
+            background-color: rgba(255, 255, 255, 0.95); /* Daha opak arka plan */
         }
         textarea {
             width: 100%;
             min-height: 200px;
             padding: 12px;
             font-size: 16px;
-            border: 1px solid #ddd;
+            border: 2px solid #999; /* Daha belirgin border */
             border-radius: 4px;
             font-family: Arial, sans-serif;
             resize: vertical;
+            color: #222; /* Daha koyu yazı rengi */
+            font-weight: 500; /* Biraz daha kalın */
+            background-color: rgba(255, 255, 255, 0.95); /* Daha opak arka plan */
         }
         input[type="file"] {
             width: 100%;
@@ -61,21 +196,52 @@
             border-radius: 4px;
             background-color: #f9f9f9;
         }
+        .button-wrapper {
+            position: relative;
+            width: 100%;
+            margin-top: 20px;
+            overflow: visible; /* Badge'in taşmasına izin ver */
+        }
         button {
             width: 100%;
-            padding: 15px;
+            padding: 20px 15px 25px 15px; /* Üst, sağ, alt, sol - alt padding artırıldı */
             font-size: 18px;
             font-weight: bold;
-            background-color: #007bff;
+            /* Gerçek kamuflaj resmi ile kaplama */
+            background-color: #5a4fcf; /* Fallback renk */
+            background-image: url('/static/camouflage.png');
+            background-size: cover; /* Butonu tamamen kapla */
+            background-position: center;
+            background-repeat: no-repeat;
+            /* Orijinal renkleri koru - filtre yok */
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 20px;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: flex-end; /* Yazıyı aşağı kaydır */
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(90, 79, 207, 0.4);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Yazıyı daha okunabilir yap */
         }
         button:hover {
-            background-color: #0056b3;
+            filter: brightness(1.1); /* Sadece hafif parlaklık artışı */
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        .button-badge {
+            position: absolute;
+            top: -50px; /* PNG'nin çoğu butonun üstünde, sadece alt kısmı (kollar) butona değecek */
+            left: 50%; /* Butona göre ortala */
+            transform: translateX(-50%); /* Tam ortala */
+            z-index: 3; /* Butonun üzerinde olması için */
+            max-width: 120px; /* Küçültüldü */
+            height: auto;
+            pointer-events: none;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
         }
         button:disabled {
             background-color: #ccc;
@@ -99,7 +265,17 @@
 <body>
 
 <div class="container">
-    <h1>Günlük Faaliyet Raporu</h1>
+    <div class="title-wrapper">
+        <div class="title-top">
+            <img src="/static/crown.png" alt="Crown" class="crown-left">
+            <h1>METEBABA</h1>
+            <img src="/static/crown.png" alt="Crown" class="crown-right">
+        </div>
+        <div class="title-bottom">
+            <h2>RAPORATÖR</h2>
+            <img src="/static/27.png" alt="Badge" class="title-badge">
+        </div>
+    </div>
 
     <form method="POST" action="/generator-test" enctype="multipart/form-data" id="reportForm">
         
@@ -129,7 +305,10 @@
 
         <div class="error" id="errorMessage"></div>
 
-        <button type="submit" id="submitBtn">Rapor Oluştur</button>
+        <div class="button-wrapper">
+            <img src="/static/badge.png" alt="Badge" class="button-badge" id="buttonBadge">
+            <button type="submit" id="submitBtn">Rapor Oluştur</button>
+        </div>
 
     </form>
 </div>
