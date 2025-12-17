@@ -6,6 +6,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.utils import ImageReader
 from PIL import Image as PILImage
 import os
+import tempfile
 
 # A4 boyutları
 PAGE_WIDTH, PAGE_HEIGHT = A4
@@ -143,8 +144,9 @@ def draw_text_multiline(canvas, x, y, text, font_name, font_size, color=colors.b
     return current_y
 
 def draw_image_fit(canvas, x, y, width, height, image_path):
-    """Görseli oranı koruyarak sığdır (contain)"""
+    """Görseli oranı koruyarak sığdır (contain) - Memory optimize edilmiş"""
     try:
+        # Görseli aç ve boyutları kontrol et
         pil_img = PILImage.open(image_path)
         img_width, img_height = pil_img.size
         
@@ -156,17 +158,62 @@ def draw_image_fit(canvas, x, y, width, height, image_path):
         new_width = img_width * scale
         new_height = img_height * scale
         
+        # Eğer görsel çok büyükse, önce resize et (memory tasarrufu)
+        max_dimension = 2000  # Maksimum piksel boyutu
+        if img_width > max_dimension or img_height > max_dimension:
+            # Oranı koruyarak resize et
+            if img_width > img_height:
+                new_size = (max_dimension, int(img_height * (max_dimension / img_width)))
+            else:
+                new_size = (int(img_width * (max_dimension / img_height)), max_dimension)
+            
+            pil_img = pil_img.resize(new_size, PILImage.Resampling.LANCZOS)
+            img_width, img_height = pil_img.size
+            # Oranları yeniden hesapla
+            scale_w = width / img_width
+            scale_h = height / img_height
+            scale = min(scale_w, scale_h)
+            new_width = img_width * scale
+            new_height = img_height * scale
+        
         # Ortala
         offset_x = x + (width - new_width) / 2
         offset_y = y + (height - new_height) / 2
         
+        # Geçici dosyaya kaydet (memory tasarrufu için)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+        temp_path = temp_file.name
+        temp_file.close()
+        
+        # RGB'ye çevir (eğer RGBA ise)
+        if pil_img.mode in ('RGBA', 'LA', 'P'):
+            rgb_img = PILImage.new('RGB', pil_img.size, (255, 255, 255))
+            if pil_img.mode == 'P':
+                pil_img = pil_img.convert('RGBA')
+            rgb_img.paste(pil_img, mask=pil_img.split()[-1] if pil_img.mode in ('RGBA', 'LA') else None)
+            pil_img = rgb_img
+        
+        # JPEG olarak kaydet (daha küçük dosya boyutu)
+        pil_img.save(temp_path, 'JPEG', quality=85, optimize=True)
+        
         # ReportLab ImageReader kullan
-        img_reader = ImageReader(image_path)
+        img_reader = ImageReader(temp_path)
         canvas.drawImage(img_reader, offset_x, offset_y, width=new_width, height=new_height)
+        
+        # Geçici dosyayı sil
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+        
+        # PIL görselini kapat (memory temizliği)
+        pil_img.close()
         
         return True
     except Exception as e:
         print(f"Görsel yüklenemedi {image_path}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def calculate_text_height(text, font_name, font_size, max_width):
