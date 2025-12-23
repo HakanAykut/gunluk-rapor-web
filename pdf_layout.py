@@ -113,16 +113,19 @@ def draw_text(canvas, x, y, text, font_name, font_size, color=colors.black,
 
 def draw_text_multiline(canvas, x, y, text, font_name, font_size, color=colors.black, 
                         line_height=None, max_width=None, alignment='left'):
-    """Çok satırlı metin çiz"""
+    """Çok satırlı metin çiz ve gerçek yüksekliği döndür"""
     if line_height is None:
         line_height = font_size * 1.2
+    
+    if not text:
+        return y - line_height
     
     lines = text.split('\n')
     current_y = y
     
     for line in lines:
         if max_width:
-            # Metni max_width'e sığdır (basit word wrap)
+            # Metni max_width'e sığdır (word wrap)
             words = line.split(' ')
             current_line = ''
             for word in words:
@@ -141,7 +144,7 @@ def draw_text_multiline(canvas, x, y, text, font_name, font_size, color=colors.b
             draw_text(canvas, x, current_y, line, font_name, font_size, color, alignment)
             current_y -= line_height
     
-    return current_y
+    return current_y  # Son satırın altındaki y pozisyonu
 
 def draw_image_fit(canvas, x, y, width, height, image_path):
     """Görseli oranı koruyarak sığdır (contain) - Memory optimize edilmiş"""
@@ -216,10 +219,31 @@ def draw_image_fit(canvas, x, y, width, height, image_path):
         traceback.print_exc()
         return False
 
-def calculate_text_height(text, font_name, font_size, max_width):
-    """Metnin yüksekliğini hesapla (çok satırlı)"""
-    # Basit hesaplama - gerçekte canvas.stringWidth kullanılabilir
-    lines = text.split('\n')
+def calculate_text_height(canvas, text, font_name, font_size, max_width):
+    """Metnin yüksekliğini hesapla (çok satırlı, word wrap ile)"""
+    if not text:
+        return font_size * 1.2
+    
     line_height = font_size * 1.2
+    words = text.split(' ')
+    lines = []
+    current_line = ''
+    
+    for word in words:
+        test_line = current_line + (' ' if current_line else '') + word
+        if canvas.stringWidth(test_line, font_name, font_size) <= max_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    
+    if current_line:
+        lines.append(current_line)
+    
+    # Eğer hiç satır yoksa (çok kısa metin), en az bir satır say
+    if not lines:
+        lines = [text]
+    
     return len(lines) * line_height
 

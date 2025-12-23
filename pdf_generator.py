@@ -11,7 +11,8 @@ from pdf_layout import (
     WORKS_TITLE_HEIGHT, WORKS_ROW_HEIGHT, WORKS_MAX_ROWS,
     PHOTO_GRID_COLS, PHOTO_GRID_ROWS, PHOTOS_PER_PAGE, PHOTO_LABEL_HEIGHT,
     FONT_SIZE_TITLE, FONT_SIZE_HEADER, FONT_SIZE_NORMAL, FONT_SIZE_SMALL,
-    setup_fonts, draw_box, draw_text, draw_text_multiline, draw_image_fit
+    setup_fonts, draw_box, draw_text, draw_text_multiline, draw_image_fit,
+    calculate_text_height
 )
 import os
 import tempfile
@@ -188,30 +189,71 @@ def generate_pdf(data, photo_files, pdf_filepath, logo_path=None, base_dir=None)
                  "YAPILAN İŞLER:", font_bold, FONT_SIZE_NORMAL, bold=True, alignment='left')
         current_y = works_title_y  # Bitişik, boşluk yok
         
-        # İşler listesi
+        # İşler listesi - dinamik yükseklik ile
         yapilan_isler = data.get("yapilan_isler", [])
-        works_content_height = WORKS_ROW_HEIGHT * WORKS_MAX_ROWS
-        works_content_y = current_y - works_content_height
         
-        # Çizgili tablo görünümü
-        for i in range(WORKS_MAX_ROWS):
-            row_y = works_content_y + (WORKS_MAX_ROWS - i - 1) * WORKS_ROW_HEIGHT
-            draw_box(c, MARGIN_LEFT, row_y, band_width, WORKS_ROW_HEIGHT)
+        # İşler için alan genişliği (padding dahil)
+        works_text_width = band_width - 0.2*cm  # Sol ve sağ padding
+        works_text_x = MARGIN_LEFT + 0.1*cm
+        
+        # Maksimum toplam yükseklik (genel düzeni korumak için)
+        max_total_height = WORKS_ROW_HEIGHT * WORKS_MAX_ROWS
+        min_row_height = WORKS_ROW_HEIGHT  # Minimum satır yüksekliği
+        
+        # İşleri dinamik olarak çiz
+        current_works_y = current_y
+        total_used_height = 0
+        
+        for i, is_text in enumerate(yapilan_isler):
+            # Maksimum alanı aşmamak için kontrol
+            remaining_height = max_total_height - total_used_height
+            if remaining_height < min_row_height:
+                # Alan doldu, kalan işleri atla
+                break
             
-            if i < len(yapilan_isler):
-                # Madde işareti ile metin
-                text = f"• {yapilan_isler[i]}"
-                draw_text(c, MARGIN_LEFT + 0.1*cm, row_y + WORKS_ROW_HEIGHT / 2 - FONT_SIZE_NORMAL / 3,
-                         text, font_regular, FONT_SIZE_NORMAL, alignment='left')
-            else:
-                # Boş satır - altı çizgili görünüm
-                c.setStrokeColor(colors.grey)
-                c.setLineWidth(0.3)
-                line_y = row_y + WORKS_ROW_HEIGHT / 2
-                c.line(MARGIN_LEFT + 0.1*cm, line_y, 
-                       MARGIN_LEFT + band_width - 0.1*cm, line_y)
+            # Madde işareti ile metin
+            full_text = f"• {is_text}"
+            
+            # Metnin yüksekliğini hesapla
+            text_height = calculate_text_height(c, full_text, font_regular, FONT_SIZE_NORMAL, works_text_width)
+            # Minimum yüksekliği garanti et
+            row_height = max(text_height, min_row_height)
+            
+            # Eğer kalan alan yetersizse, mevcut alanı kullan
+            if total_used_height + row_height > max_total_height:
+                row_height = remaining_height
+            
+            # Hücreyi çiz
+            row_y = current_works_y - row_height
+            draw_box(c, MARGIN_LEFT, row_y, band_width, row_height)
+            
+            # Metni çiz (çok satırlı) - üstten padding ile
+            text_y = row_y + row_height - 0.1*cm  # Üstten biraz padding
+            draw_text_multiline(c, works_text_x, text_y, full_text, font_regular, FONT_SIZE_NORMAL,
+                              max_width=works_text_width, alignment='left')
+            
+            # Sonraki iş için y pozisyonunu güncelle
+            current_works_y = row_y
+            total_used_height += row_height
         
-        current_y = works_content_y  # Bitişik, boşluk yok
+        # Boş satırları çiz (kalan alan için)
+        remaining_height = max_total_height - total_used_height
+        empty_rows_count = int(remaining_height / min_row_height)
+        
+        for i in range(empty_rows_count):
+            row_y = current_works_y - min_row_height
+            draw_box(c, MARGIN_LEFT, row_y, band_width, min_row_height)
+            
+            # Boş satır - altı çizgili görünüm
+            c.setStrokeColor(colors.grey)
+            c.setLineWidth(0.3)
+            line_y = row_y + min_row_height / 2
+            c.line(works_text_x, line_y, 
+                   MARGIN_LEFT + band_width - 0.1*cm, line_y)
+            
+            current_works_y = row_y
+        
+        current_y = current_works_y  # Bitişik, boşluk yok
         
         # ============================================================
         # GRI BANT: "İMALAT FOTOĞRAFLARI"
