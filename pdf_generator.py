@@ -227,10 +227,32 @@ def generate_pdf(data, photo_files, pdf_filepath, logo_path=None, base_dir=None)
             row_y = current_works_y - row_height
             draw_box(c, MARGIN_LEFT, row_y, band_width, row_height)
             
-            # Metni çiz (çok satırlı) - üstten padding ile
-            text_y = row_y + row_height - 0.1*cm  # Üstten biraz padding
-            draw_text_multiline(c, works_text_x, text_y, full_text, font_regular, FONT_SIZE_NORMAL,
-                              max_width=works_text_width, alignment='left')
+            # Metni word wrap ile hücrenin içine çiz
+            # Metnin gerçek yüksekliğini hesapla (satır sayısı * satır yüksekliği)
+            line_height = FONT_SIZE_NORMAL * 1.2
+            words = full_text.split(' ')
+            wrapped_lines = []
+            current_line = ''
+            for word in words:
+                test_line = current_line + (' ' if current_line else '') + word
+                if c.stringWidth(test_line, font_regular, FONT_SIZE_NORMAL) <= works_text_width:
+                    current_line = test_line
+                else:
+                    if current_line:
+                        wrapped_lines.append(current_line)
+                    current_line = word
+            if current_line:
+                wrapped_lines.append(current_line)
+            
+            # Metni hücrenin üstünden padding ile başlat
+            # ReportLab'de y pozisyonu baseline'dır, bu yüzden font boyutunun bir kısmını ekliyoruz
+            text_padding = 0.1*cm
+            text_start_y = row_y + row_height - text_padding - (FONT_SIZE_NORMAL * 0.3)
+            
+            # Metni satır satır çiz (yukarıdan aşağıya)
+            for line in wrapped_lines:
+                draw_text(c, works_text_x, text_start_y, line, font_regular, FONT_SIZE_NORMAL, alignment='left')
+                text_start_y -= line_height
             
             # Sonraki iş için y pozisyonunu güncelle
             current_works_y = row_y
@@ -244,7 +266,7 @@ def generate_pdf(data, photo_files, pdf_filepath, logo_path=None, base_dir=None)
             row_y = current_works_y - min_row_height
             draw_box(c, MARGIN_LEFT, row_y, band_width, min_row_height)
             
-            # Boş satır - altı çizgili görünüm
+            # Boş satır - altı çizgili görünüm (sadece boş hücrelerde)
             c.setStrokeColor(colors.grey)
             c.setLineWidth(0.3)
             line_y = row_y + min_row_height / 2
