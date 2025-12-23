@@ -214,10 +214,13 @@ def generate_pdf(data, photo_files, pdf_filepath, logo_path=None, base_dir=None)
             # Madde işareti ile metin
             full_text = f"• {is_text}"
             
-            # Metnin yüksekliğini hesapla
+            # Hücre içi padding (üst ve alt)
+            cell_padding_vertical = 0.15*cm  # Üst ve alttan boşluk
+            
+            # Metnin yüksekliğini hesapla (padding olmadan)
             text_height = calculate_text_height(c, full_text, font_regular, FONT_SIZE_NORMAL, works_text_width)
-            # Minimum yüksekliği garanti et
-            row_height = max(text_height, min_row_height)
+            # Hücre yüksekliği = metin yüksekliği + üst padding + alt padding
+            row_height = max(text_height + 2*cell_padding_vertical, min_row_height)
             
             # Eğer kalan alan yetersizse, mevcut alanı kullan
             if total_used_height + row_height > max_total_height:
@@ -246,8 +249,7 @@ def generate_pdf(data, photo_files, pdf_filepath, logo_path=None, base_dir=None)
             
             # Metni hücrenin üstünden padding ile başlat
             # ReportLab'de y pozisyonu baseline'dır, bu yüzden font boyutunun bir kısmını ekliyoruz
-            text_padding = 0.1*cm
-            text_start_y = row_y + row_height - text_padding - (FONT_SIZE_NORMAL * 0.3)
+            text_start_y = row_y + row_height - cell_padding_vertical - (FONT_SIZE_NORMAL * 0.3)
             
             # Metni satır satır çiz (yukarıdan aşağıya)
             for line in wrapped_lines:
