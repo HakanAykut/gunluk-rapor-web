@@ -280,6 +280,21 @@
     <form method="POST" action="/generator-test" enctype="multipart/form-data" id="reportForm">
         
         <div class="form-group">
+            <label for="proje">Proje</label>
+            <div style="display: flex; gap: 20px; margin-top: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                    <input type="radio" id="proje_fetihtepe" name="proje" value="Fetihtepe" checked style="width: auto; margin: 0;">
+                    <span>Fetihtepe</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                    <input type="radio" id="proje_arap_camii" name="proje" value="Arap Camii" style="width: auto; margin: 0;">
+                    <span>Arap Camii</span>
+                </label>
+            </div>
+            <div class="help-text">Rapor için proje seçin</div>
+        </div>
+
+        <div class="form-group">
             <label for="tarih">Tarih</label>
             <input type="date" id="tarih" name="tarih" required>
             <div class="help-text">Rapor tarihini seçin</div>

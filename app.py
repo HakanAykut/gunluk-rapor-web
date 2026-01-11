@@ -62,6 +62,7 @@ def serve_pdf(filename):
 def generator_test():
     try:
         # Form alanlarından direkt al
+        proje = request.form.get("proje", "Fetihtepe")  # Varsayılan: Fetihtepe
         tarih = request.form.get("tarih", "")
         rapor_no = request.form.get("rapor_no", "")
         yapilan_isler_text = request.form.get("yapilan_isler", "")
@@ -94,11 +95,18 @@ def generator_test():
                 else:
                     yapilan_isler.append(line)
 
+        # Proje seçimine göre başlığı belirle
+        if proje == "Arap Camii":
+            proje_basligi = "Arap Camii Kuran Kursu Güçlendirme Projesi"
+        else:  # Fetihtepe (varsayılan)
+            proje_basligi = "FETİHTEPE MERKEZ CAMİ'İ GÜÇLENDİRME VE YENİLEME PROJESİ"
+
         # Data dict oluştur
         data = {
             "tarih": tarih_formatted,
             "rapor_no": rapor_no,
-            "yapilan_isler": yapilan_isler
+            "yapilan_isler": yapilan_isler,
+            "proje_basligi": proje_basligi
         }
 
         filepath = generate_report(data, photos)
