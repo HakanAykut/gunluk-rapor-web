@@ -5,6 +5,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.utils import ImageReader
 from PIL import Image as PILImage
+from PIL import ImageOps
 import os
 import tempfile
 
@@ -149,35 +150,38 @@ def draw_text_multiline(canvas, x, y, text, font_name, font_size, color=colors.b
 def draw_image_fit(canvas, x, y, width, height, image_path):
     """Görseli oranı koruyarak sığdır (contain) - Memory optimize edilmiş"""
     try:
-        # Görseli aç ve boyutları kontrol et
+        # Görseli aç
         pil_img = PILImage.open(image_path)
+        
+        # EXIF orientation bilgisini düzelt (fotoğrafın doğru yönde görünmesi için)
+        # Bu işlem resize'den ÖNCE yapılmalı çünkü orientation düzeltmesi boyutları değiştirebilir
+        pil_img = ImageOps.exif_transpose(pil_img)
+        
+        # Boyutları kontrol et (orientation düzeltmesinden sonra)
         img_width, img_height = pil_img.size
         
-        # Oranları hesapla
+        # Agresif resize optimizasyonu (512MB RAM için)
+        # PDF'de fotoğraflar küçük hücrelerde gösterildiği için 1200px yeterli
+        max_dimension = 1200  # Maksimum piksel boyutu (2000'den 1200'e düşürüldü)
+        if img_width > max_dimension or img_height > max_dimension:
+            # Oranı koruyarak resize et (memory tasarrufu için erken resize)
+            if img_width > img_height:
+                new_size = (max_dimension, int(img_height * (max_dimension / img_width)))
+            else:
+                new_size = (int(img_width * (max_dimension / img_height)), max_dimension)
+            
+            # Resize işlemi (LANCZOS kaliteli ama yavaş, LINEAR daha hızlı)
+            # Memory için LINEAR kullanıyoruz (hız ve memory dengesi)
+            pil_img = pil_img.resize(new_size, PILImage.Resampling.LINEAR)
+            img_width, img_height = pil_img.size
+        
+        # Oranları hesapla (resize sonrası)
         scale_w = width / img_width
         scale_h = height / img_height
         scale = min(scale_w, scale_h)
         
         new_width = img_width * scale
         new_height = img_height * scale
-        
-        # Eğer görsel çok büyükse, önce resize et (memory tasarrufu)
-        max_dimension = 2000  # Maksimum piksel boyutu
-        if img_width > max_dimension or img_height > max_dimension:
-            # Oranı koruyarak resize et
-            if img_width > img_height:
-                new_size = (max_dimension, int(img_height * (max_dimension / img_width)))
-            else:
-                new_size = (int(img_width * (max_dimension / img_height)), max_dimension)
-            
-            pil_img = pil_img.resize(new_size, PILImage.Resampling.LANCZOS)
-            img_width, img_height = pil_img.size
-            # Oranları yeniden hesapla
-            scale_w = width / img_width
-            scale_h = height / img_height
-            scale = min(scale_w, scale_h)
-            new_width = img_width * scale
-            new_height = img_height * scale
         
         # Ortala
         offset_x = x + (width - new_width) / 2
@@ -196,8 +200,9 @@ def draw_image_fit(canvas, x, y, width, height, image_path):
             rgb_img.paste(pil_img, mask=pil_img.split()[-1] if pil_img.mode in ('RGBA', 'LA') else None)
             pil_img = rgb_img
         
-        # JPEG olarak kaydet (daha küçük dosya boyutu)
-        pil_img.save(temp_path, 'JPEG', quality=85, optimize=True)
+        # JPEG olarak kaydet (daha küçük dosya boyutu ve daha hızlı işleme)
+        # Quality 75: görsel kalite hala iyi, dosya boyutu ve işleme hızı daha iyi
+        pil_img.save(temp_path, 'JPEG', quality=75, optimize=True)
         
         # ReportLab ImageReader kullan
         img_reader = ImageReader(temp_path)
