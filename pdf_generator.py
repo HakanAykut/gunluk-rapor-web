@@ -380,16 +380,23 @@ def generate_report(data, photos):
     
     # Geçici dizin oluştur
     temp_dir = tempfile.mkdtemp()
-    temp_files = []
     
     try:
         # Fotoğrafları geçici dizine kaydet
         photo_files = []
         for i, photo in enumerate(photos[:8]):
-            if photo.filename:
-                ext = os.path.splitext(photo.filename)[1] or ".jpg"
+            if photo and photo.filename:
+                # Dosya uzantısını al veya varsayılan .jpg kullan
+                ext = os.path.splitext(photo.filename)[1].lower()
+                if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                    ext = '.jpg'
+                
                 temp_photo_path = os.path.join(temp_dir, f"photo_{i+1}{ext}")
+                
+                # Dosyayı kaydet ve hemen kapat (memory için)
                 photo.save(temp_photo_path)
+                photo.close() # Flask FileStorage nesnesini kapat
+                
                 photo_files.append(temp_photo_path)
 
         # PDF oluştur
@@ -406,17 +413,10 @@ def generate_report(data, photos):
         return pdf_filepath
 
     finally:
-        # Geçici dosyaları temizle
-        for f in temp_files:
-            if os.path.exists(f):
-                try:
-                    os.remove(f)
-                except:
-                    pass
-        
-        # Geçici dizini temizle
+        # Geçici dizini ve içindeki her şeyi temizle
         try:
-            shutil.rmtree(temp_dir)
-        except:
-            pass
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+        except Exception as e:
+            print(f"Geçici dizin temizleme hatası: {e}")
 

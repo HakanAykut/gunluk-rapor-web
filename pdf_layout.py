@@ -8,6 +8,7 @@ from PIL import Image as PILImage
 from PIL import ImageOps
 import os
 import tempfile
+import gc
 
 # A4 boyutları
 PAGE_WIDTH, PAGE_HEIGHT = A4
@@ -149,6 +150,8 @@ def draw_text_multiline(canvas, x, y, text, font_name, font_size, color=colors.b
 
 def draw_image_fit(canvas, x, y, width, height, image_path):
     """Görseli oranı koruyarak sığdır (contain) - Memory optimize edilmiş"""
+    pil_img = None
+    temp_path = None
     try:
         # Görseli aç
         pil_img = PILImage.open(image_path)
@@ -161,8 +164,8 @@ def draw_image_fit(canvas, x, y, width, height, image_path):
         img_width, img_height = pil_img.size
         
         # Agresif resize optimizasyonu (512MB RAM için)
-        # PDF'de fotoğraflar küçük hücrelerde gösterildiği için 1200px yeterli
-        max_dimension = 1200  # Maksimum piksel boyutu (2000'den 1200'e düşürüldü)
+        # PDF'de fotoğraflar küçük hücrelerde gösterildiği için 1000px yeterli
+        max_dimension = 1000  # 1200'den 1000'e düşürüldü
         if img_width > max_dimension or img_height > max_dimension:
             # Oranı koruyarak resize et (memory tasarrufu için erken resize)
             if img_width > img_height:
@@ -172,7 +175,18 @@ def draw_image_fit(canvas, x, y, width, height, image_path):
             
             # Resize işlemi (LANCZOS kaliteli ama yavaş, LINEAR daha hızlı)
             # Memory için LINEAR kullanıyoruz (hız ve memory dengesi)
-            pil_img = pil_img.resize(new_size, PILImage.Resampling.LINEAR)
+            try:
+                # Pillow 9.1.0+ için
+                resample_filter = PILImage.Resampling.BILINEAR
+            except AttributeError:
+                try:
+                    # Daha eski Pillow versiyonları için
+                    resample_filter = PILImage.BILINEAR
+                except AttributeError:
+                    # Çok eski versiyonlar veya fallback
+                    resample_filter = 2 # 2, BILINEAR filtresinin sayısal değeridir
+                
+            pil_img = pil_img.resize(new_size, resample_filter)
             img_width, img_height = pil_img.size
         
         # Oranları hesapla (resize sonrası)
@@ -198,6 +212,8 @@ def draw_image_fit(canvas, x, y, width, height, image_path):
             if pil_img.mode == 'P':
                 pil_img = pil_img.convert('RGBA')
             rgb_img.paste(pil_img, mask=pil_img.split()[-1] if pil_img.mode in ('RGBA', 'LA') else None)
+            # Eski pil_img'i kapat
+            pil_img.close()
             pil_img = rgb_img
         
         # JPEG olarak kaydet (daha küçük dosya boyutu ve daha hızlı işleme)
@@ -208,21 +224,29 @@ def draw_image_fit(canvas, x, y, width, height, image_path):
         img_reader = ImageReader(temp_path)
         canvas.drawImage(img_reader, offset_x, offset_y, width=new_width, height=new_height)
         
-        # Geçici dosyayı sil
-        try:
-            os.unlink(temp_path)
-        except:
-            pass
-        
-        # PIL görselini kapat (memory temizliği)
-        pil_img.close()
-        
         return True
     except Exception as e:
         print(f"Görsel yüklenemedi {image_path}: {e}")
         import traceback
         traceback.print_exc()
         return False
+    finally:
+        # PIL görselini kapat (memory temizliği)
+        if pil_img:
+            try:
+                pil_img.close()
+            except:
+                pass
+        
+        # Geçici dosyayı sil
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+        
+        # Garbage collection'ı tetikle
+        gc.collect()
 
 def calculate_text_height(canvas, text, font_name, font_size, max_width):
     """Metnin yüksekliğini hesapla (çok satırlı, word wrap ile)"""

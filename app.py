@@ -64,6 +64,7 @@ def generator_test():
         # Form alanlarından direkt al
         proje = request.form.get("proje", "Fetihtepe")  # Varsayılan: Fetihtepe
         tarih = request.form.get("tarih", "")
+        tarih_tipi = request.form.get("tarih_tipi", "gunluk")
         rapor_no = request.form.get("rapor_no", "")
         yapilan_isler_text = request.form.get("yapilan_isler", "")
         photos = request.files.getlist("photos")
@@ -76,11 +77,19 @@ def generator_test():
         if not yapilan_isler_text.strip():
             return jsonify({"error": "Yapılan İşler boş olamaz"}), 400
 
-        # Tarihi DD.MM.YYYY formatına çevir
-        from datetime import datetime
+        # Tarihi işle
+        from datetime import datetime, timedelta
         try:
             tarih_obj = datetime.strptime(tarih, "%Y-%m-%d")
-            tarih_formatted = tarih_obj.strftime("%d.%m.%Y")
+            
+            if tarih_tipi == "3gunluk":
+                # 3 günlük format: 12/13/14.01.2026
+                t2 = tarih_obj + timedelta(days=1)
+                t3 = tarih_obj + timedelta(days=2)
+                tarih_formatted = f"{tarih_obj.strftime('%d')}/{t2.strftime('%d')}/{t3.strftime('%d.%m.%Y')}"
+            else:
+                # Günlük format: 12.01.2026
+                tarih_formatted = tarih_obj.strftime("%d.%m.%Y")
         except:
             tarih_formatted = tarih
 

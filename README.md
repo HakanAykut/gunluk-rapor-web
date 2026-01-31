@@ -45,11 +45,34 @@ git push heroku main
 
 ## Lokal Çalıştırma
 
-```bash
-python app.py
-```
+Lokalde test yapmak için şu adımları izleyin:
 
-Uygulama `http://localhost:5000` adresinde çalışacaktır.
+1.  **Sanal Ortam Oluşturun (Opsiyonel ama Önerilir):**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # macOS/Linux
+    # veya
+    venv\Scripts\activate     # Windows
+    ```
+
+2.  **Bağımlılıkları Yükleyin:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Uygulamayı Başlatın:**
+    ```bash
+    python app.py
+    ```
+
+Uygulama `http://127.0.0.1:5000` adresinde çalışacaktır. Değişiklikleri lokalde test ettikten sonra canlıya (git push) alabilirsiniz.
+
+## Performans ve Bellek Optimizasyonları
+
+Bu uygulama, 512MB RAM gibi kısıtlı kaynaklarda çalışacak şekilde optimize edilmiştir:
+- **Client-Side Resizing:** Fotoğraflar tarayıcıda 1000px boyutuna düşürülüp JPEG formatında gönderilir.
+- **Memory Management:** Sunucu tarafında Pillow nesneleri işlendikten sonra hemen kapatılır ve `gc.collect()` ile bellek temizlenir.
+- **One-by-One Processing:** Fotoğraflar PDF'e eklenirken tek tek işlenerek bellek kullanımı minimize edilir.
 
 ## Önemli Notlar
 
