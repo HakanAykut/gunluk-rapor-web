@@ -83,14 +83,31 @@ def generator_test():
             tarih_obj = datetime.strptime(tarih, "%Y-%m-%d")
             
             if tarih_tipi == "3gunluk":
-                # 3 günlük format: 12/13/14.01.2026
-                t2 = tarih_obj + timedelta(days=1)
-                t3 = tarih_obj + timedelta(days=2)
+                # 3 günlük format (Hafta sonunu atla): 12/13/14.01.2026
+                def get_next_workday(d):
+                    next_d = d + timedelta(days=1)
+                    while next_d.weekday() >= 5: # 5=Cumartesi, 6=Pazar
+                        next_d += timedelta(days=1)
+                    return next_d
+                
+                t2 = get_next_workday(tarih_obj)
+                t3 = get_next_workday(t2)
                 tarih_formatted = f"{tarih_obj.strftime('%d')}/{t2.strftime('%d')}/{t3.strftime('%d.%m.%Y')}"
+            elif tarih_tipi == "3gunluk_ozel":
+                # Özel 3 günlük format: Kullanıcının seçtiği 3 tarih
+                tarih2 = request.form.get("tarih2", "")
+                tarih3 = request.form.get("tarih3", "")
+                if not tarih2 or not tarih3:
+                    return jsonify({"error": "Özel 3 günlük rapor için tüm tarihler seçilmelidir"}), 400
+                
+                t2_obj = datetime.strptime(tarih2, "%Y-%m-%d")
+                t3_obj = datetime.strptime(tarih3, "%Y-%m-%d")
+                tarih_formatted = f"{tarih_obj.strftime('%d')}/{t2_obj.strftime('%d')}/{t3_obj.strftime('%d.%m.%Y')}"
             else:
                 # Günlük format: 12.01.2026
                 tarih_formatted = tarih_obj.strftime("%d.%m.%Y")
-        except:
+        except Exception as e:
+            print(f"Tarih işleme hatası: {e}")
             tarih_formatted = tarih
 
         # Yapılan işleri satırlara böl

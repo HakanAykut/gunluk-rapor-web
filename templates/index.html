@@ -304,8 +304,22 @@
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
                     <input type="radio" id="tarih_3gunluk" name="tarih_tipi" value="3gunluk" style="width: auto; margin: 0;">
-                    <span>3 Günlük</span>
+                    <span>3 Günlük (Oto)</span>
                 </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                    <input type="radio" id="tarih_3gunluk_ozel" name="tarih_tipi" value="3gunluk_ozel" style="width: auto; margin: 0;">
+                    <span>3 Günlük (Özel)</span>
+                </label>
+            </div>
+            <div id="ozel_tarihler" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                <div style="margin-bottom: 10px;">
+                    <label for="tarih2" style="font-size: 14px;">2. Gün</label>
+                    <input type="date" id="tarih2" name="tarih2">
+                </div>
+                <div>
+                    <label for="tarih3" style="font-size: 14px;">3. Gün</label>
+                    <input type="date" id="tarih3" name="tarih3">
+                </div>
             </div>
             <div class="help-text">Rapor tarihini seçin ve tipini belirleyin</div>
         </div>
@@ -379,6 +393,21 @@
             };
         });
     }
+
+    document.querySelectorAll('input[name="tarih_tipi"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const ozelTarihler = document.getElementById('ozel_tarihler');
+            if (this.value === '3gunluk_ozel') {
+                ozelTarihler.style.display = 'block';
+                document.getElementById('tarih2').required = true;
+                document.getElementById('tarih3').required = true;
+            } else {
+                ozelTarihler.style.display = 'none';
+                document.getElementById('tarih2').required = false;
+                document.getElementById('tarih3').required = false;
+            }
+        });
+    });
 
     document.getElementById('reportForm').addEventListener('submit', async function(e) {
         e.preventDefault(); // Formun normal gönderimini durdur

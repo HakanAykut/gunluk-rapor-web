@@ -233,19 +233,40 @@ def generate_pdf(data, photo_files, pdf_filepath, logo_path=None, base_dir=None)
             # Metni word wrap ile hücrenin içine çiz
             # Metnin gerçek yüksekliğini hesapla (satır sayısı * satır yüksekliği)
             line_height = FONT_SIZE_NORMAL * 1.2
-            words = full_text.split(' ')
-            wrapped_lines = []
-            current_line = ''
-            for word in words:
-                test_line = current_line + (' ' if current_line else '') + word
-                if c.stringWidth(test_line, font_regular, FONT_SIZE_NORMAL) <= works_text_width:
-                    current_line = test_line
-                else:
-                    if current_line:
-                        wrapped_lines.append(current_line)
-                    current_line = word
-            if current_line:
-                wrapped_lines.append(current_line)
+            
+            # Gelişmiş satır bölme: Çok uzun kelimeleri de karakter karakter böler
+            def get_wrapped_lines(text, font, size, width):
+                words = text.split(' ')
+                lines = []
+                current_line = ''
+                for word in words:
+                    # Kelime tek başına genişlikten büyükse karakter karakter böl
+                    if c.stringWidth(word, font, size) > width:
+                        if current_line:
+                            lines.append(current_line)
+                            current_line = ''
+                        
+                        temp_word = ''
+                        for char in word:
+                            if c.stringWidth(temp_word + char, font, size) <= width:
+                                temp_word += char
+                            else:
+                                lines.append(temp_word)
+                                temp_word = char
+                        current_line = temp_word
+                    else:
+                        test_line = (current_line + ' ' + word).strip()
+                        if c.stringWidth(test_line, font, size) <= width:
+                            current_line = test_line
+                        else:
+                            if current_line:
+                                lines.append(current_line)
+                            current_line = word
+                if current_line:
+                    lines.append(current_line)
+                return lines
+
+            wrapped_lines = get_wrapped_lines(full_text, font_regular, FONT_SIZE_NORMAL, works_text_width)
             
             # Metni hücrenin üstünden padding ile başlat
             # ReportLab'de y pozisyonu baseline'dır, bu yüzden font boyutunun bir kısmını ekliyoruz
