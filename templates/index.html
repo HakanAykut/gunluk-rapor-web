@@ -120,15 +120,32 @@
             background-clip: text;
             color: #667eea; /* Fallback */
         }
+        .title-badge-wrapper {
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-left: -60px; /* RAPORATÖR'ün üzerine gelsin */
+            margin-top: 50px;
+        }
         .title-badge {
-            max-width: 130px; /* Daha büyük */
+            max-width: 130px;
             height: auto;
             opacity: 0.9;
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
             position: relative;
-            z-index: 2; /* Raporatörün üzerine taşsın */
-            margin-left: -60px; /* Daha sola al, RAPORATÖR'ün son harflerinin üzerine gelsin */
-            margin-top: 50px; /* Aşağıya al */
+            z-index: 2;
+        }
+        .hakki-sticker {
+            max-width: 40px; /* Daha da küçültüldü */
+            height: auto;
+            margin-left: -40px; /* Damganın sağ tarafına geçmesi için sol margin eklendi */
+            margin-top: 10px; /* Biraz daha aşağıya, damganın sağ alt/orta kısmına doğru */
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            z-index: 3;
+            transition: transform 0.3s ease;
+        }
+        .hakki-sticker:hover {
+            transform: scale(1.1) rotate(-5deg);
         }
         
         @supports (-webkit-background-clip: text) {
@@ -273,7 +290,10 @@
         </div>
         <div class="title-bottom">
             <h2>RAPORATÖR</h2>
-            <img src="/static/27.png" alt="Badge" class="title-badge">
+            <div class="title-badge-wrapper">
+                <img src="/static/27.png" alt="Badge" class="title-badge">
+                <img src="/static/hakkı.png" alt="Hakkı" class="hakki-sticker">
+            </div>
         </div>
     </div>
 
