@@ -103,6 +103,14 @@ def generator_test():
                 t2_obj = datetime.strptime(tarih2, "%Y-%m-%d")
                 t3_obj = datetime.strptime(tarih3, "%Y-%m-%d")
                 tarih_formatted = f"{tarih_obj.strftime('%d')}/{t2_obj.strftime('%d')}/{t3_obj.strftime('%d.%m.%Y')}"
+            elif tarih_tipi == "aralik":
+                # Aralık format: 16.02.2026 - 09.03.2026
+                tarih_bitis = request.form.get("tarih_bitis", "")
+                if not tarih_bitis:
+                    return jsonify({"error": "Aralık raporu için bitiş tarihi seçilmelidir"}), 400
+                
+                tarih_bitis_obj = datetime.strptime(tarih_bitis, "%Y-%m-%d")
+                tarih_formatted = f"{tarih_obj.strftime('%d.%m.%Y')} - {tarih_bitis_obj.strftime('%d.%m.%Y')}"
             else:
                 # Günlük format: 12.01.2026
                 tarih_formatted = tarih_obj.strftime("%d.%m.%Y")
@@ -124,6 +132,8 @@ def generator_test():
         # Proje seçimine göre başlığı belirle
         if proje == "Arap Camii":
             proje_basligi = "Arap Camii Kuran Kursu Güçlendirme Projesi"
+        elif proje == "Abdusselam":
+            proje_basligi = "Abdüsselam Kuran Kursu Güçlendirme Projesi"
         else:  # Fetihtepe (varsayılan)
             proje_basligi = "FETİHTEPE MERKEZ CAMİ'İ GÜÇLENDİRME VE YENİLEME PROJESİ"
 
