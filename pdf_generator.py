@@ -152,10 +152,14 @@ def generate_pdf(data, photo_files, pdf_filepath, logo_path=None, base_dir=None)
         # Satır 2, Sol hücre: "Tarih" - küçük font
         draw_text(c, col3_x + cell_padding, col3_y + HEADER_TABLE_CELL_HEIGHT/2 - header_small_font/3,
                  "Tarih", font_regular, header_small_font, alignment='left')
-        # Satır 2, Sağ hücre: Tarih değeri (karşıdaki kutucukta, ortalanmış, küçük font)
+        # Satır 2, Sağ hücre: Tarih değeri (hücreye sığacak şekilde font boyutu ayarlanır)
         tarih_text = data.get("tarih", "")
-        draw_text(c, col3_x + cell_width + cell_width/2, col3_y + HEADER_TABLE_CELL_HEIGHT/2 - header_small_font/3,
-                 tarih_text, font_regular, header_small_font, alignment='center')
+        tarih_font_size = header_small_font
+        tarih_cell_width = cell_width - 2*cell_padding
+        while c.stringWidth(tarih_text, font_regular, tarih_font_size) > tarih_cell_width and tarih_font_size > 3:
+            tarih_font_size -= 0.5
+        draw_text(c, col3_x + cell_width + cell_width/2, col3_y + HEADER_TABLE_CELL_HEIGHT/2 - tarih_font_size/3,
+                 tarih_text, font_regular, tarih_font_size, alignment='center')
         
         current_y = col1_y  # Header'dan sonra boşluk yok, bitişik
         
